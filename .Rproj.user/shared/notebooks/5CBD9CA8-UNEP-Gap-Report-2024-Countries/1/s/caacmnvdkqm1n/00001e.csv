@@ -1,0 +1,26 @@
+"0","wrap_elements(plot_country(""CHN"",data_edgar,data_indicators)) /wrap_elements(plot_country(""USA"",data_edgar,data_indicators)) / wrap_elements(plot_country(""RUS"",data_edgar,data_indicators))
+"
+"1","[38;5;232m`summarise()` has grouped output by 'iso', 'country', 'sector', 'sector_codes'. You can override using the `.groups` argument.[39m
+"
+"1","[38;5;232mScale for [32mfill[38;5;232m is already present.
+Adding another scale for [32mfill[38;5;232m, which will replace the existing scale.[39m
+"
+"1","[38;5;232mScale for [32mfill[38;5;232m is already present.
+Adding another scale for [32mfill[38;5;232m, which will replace the existing scale.[39m
+"
+"1","[38;5;232m`summarise()` has grouped output by 'iso', 'country', 'sector', 'sector_codes'. You can override using the `.groups` argument.[39m
+"
+"1","[38;5;232mScale for [32mfill[38;5;232m is already present.
+Adding another scale for [32mfill[38;5;232m, which will replace the existing scale.[39m
+"
+"1","[38;5;232mScale for [32mfill[38;5;232m is already present.
+Adding another scale for [32mfill[38;5;232m, which will replace the existing scale.[39m
+"
+"1","[38;5;232m`summarise()` has grouped output by 'iso', 'country', 'sector', 'sector_codes'. You can override using the `.groups` argument.[39m
+"
+"1","[38;5;232mScale for [32mfill[38;5;232m is already present.
+Adding another scale for [32mfill[38;5;232m, which will replace the existing scale.[39m
+"
+"1","[38;5;232mScale for [32mfill[38;5;232m is already present.
+Adding another scale for [32mfill[38;5;232m, which will replace the existing scale.[39m
+"

@@ -1,0 +1,6 @@
+"0",""
+"0","metadata <- labelled::generate_dictionary(data_indicators) %>% "
+"0","  select(variable,units=label)"
+"0",""
+"0",""
+"0",""
