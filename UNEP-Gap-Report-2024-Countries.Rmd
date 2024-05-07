@@ -62,7 +62,7 @@ data_edgar_fgas <- data_edgar_fgas %>%
 data_edgar <- rbind(data_edgar_co2_ffi,data_edgar_ch4)
 data_edgar <- rbind(data_edgar,data_edgar_n2o)
 data_edgar <- rbind(data_edgar,data_edgar_fgas)
-
+data_edgar$year <- as.numeric(data_edgar$year)
 
 ## join GWPs and calculate CO2e
 
@@ -105,28 +105,73 @@ data_edgar <- data_edgar %>%
   group_by(iso,country,code,code_description,gas,year) %>% 
   summarise(value=sum(value_gwp,na.rm=TRUE))
 
+## Gg to tons
+data_edgar$value = data_edgar$value*1000
+
 # check global totals
 check <- data_edgar %>% filter(year==2022) %>% group_by(gas) %>% summarise(value=sum(value,na.rm=T))
 
 
+
+## Grassi et al. LULUCF data (https://zenodo.org/records/7190601)
+
+data_lulucf <- read.xlsx('sources/LULUCF NGHGI database August 2022.xlsx',sheet=7,startRow = 5)
+data_lulucf <- data_lulucf %>% 
+  rename(country=X1) %>%
+  mutate(iso=countrycode(country,"country.name","iso3c"))
+data_lulucf <- gather(data_lulucf,year,value,-country,-iso)
+data_lulucf <- data_lulucf %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(!is.na(year)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  mutate(value=value*1e6) %>% 
+  mutate(code="3B") %>% 
+  mutate(code_description="Land use change") %>% 
+  mutate(gas="CO2") %>% 
+  select(iso,country,code,code_description,gas,year,value) 
+
+data_ghg <- rbind(data_edgar,data_lulucf)
+
+
+### consistent names
+
+newnames <- data_ghg %>% 
+  ungroup() %>% 
+  select(iso) %>% 
+  distinct() %>% 
+  mutate(newname=countrycode(iso,"iso3c","country.name")) %>% 
+  mutate(newname=ifelse(iso=="AIR","Intl. Aviation",newname)) %>% 
+  mutate(newname=ifelse(iso=="SEA","Intl. Shipping",newname)) %>% 
+  mutate(newname=ifelse(iso=="SCG","Serbia and Montenegro",newname)) %>% 
+  mutate(newname=ifelse(iso=="ANT","Netherlands Antilles",newname))
+
+data_ghg <- left_join(data_ghg,newnames,by="iso") %>% 
+  mutate(country=newname) %>% 
+  select(-newname) %>% 
+  filter(!is.na(iso))
+
+
 ### aggregate sectors
 
-write.xlsx(data_edgar %>% ungroup() %>% select(code,code_description) %>% distinct() %>% arrange(code),"cc_sectors.xlsx")
-data_edgar <- left_join(data_edgar,read.xlsx("sources/cc_sectors.xlsx"))
+write.xlsx(data_ghg %>% ungroup() %>% select(code,code_description) %>% distinct() %>% arrange(code),"cc_sectors.xlsx")
+data_ghg <- left_join(data_ghg,read.xlsx("sources/cc_sectors.xlsx"),by=join_by(code, code_description))
 
-data_edgar$gas <- as.factor(data_edgar$gas)
-data_edgar$gas <- fct_relevel(data_edgar$gas,"CO2","CH4","N2O","Fgases")
+data_ghg$gas <- as.factor(data_ghg$gas)
+data_ghg$gas <- fct_relevel(data_ghg$gas,"CO2","CH4","N2O","Fgases")
 
-data_edgar$sector <- as.factor(data_edgar$sector)
-data_edgar$sector <- fct_reorder(data_edgar$sector,data_edgar$sector_order)
+data_ghg$sector_tier_2 <- as.factor(data_ghg$sector_tier_2)
+data_ghg$sector_tier_2 <- fct_reorder(data_ghg$sector_tier_2,data_ghg$sector_tier_2_order)
 
-data_edgar <- data_edgar %>% 
+
+data_ghg <- data_ghg %>% 
   mutate(year=as.numeric(year)) %>% 
-  group_by(iso,country,sector,sector_codes,subsector,gas,year) %>% 
+  group_by(iso,country,sector_tier_1,sector_tier_2,sector_tier_2_codes,sector_tier_3,gas,year) %>% 
   summarise(value=sum(value,na.rm=TRUE))
 
 
+
 ```
+
 ``` {r load_other_data}
 
 ## Population data from the World Bank
@@ -138,40 +183,23 @@ data_wdi_pop<-WDI(country = "all",indicator = "SP.POP.TOTL",start = 1970,end = 2
 data_wdi_pop$population <- data_wdi_pop$SP.POP.TOTL
 data_wdi_pop$iso <- data_wdi_pop$iso3c
 data_wdi_pop<-data_wdi_pop %>% select(-SP.POP.TOTL,-iso3c)
-# 
-# load_gcb_countries_ffi <- function(sheet_ffi) {
-#   
-#   data_gcb_co2_ffi <- gather(sheet_ffi,country,value,-X1)
-#   data_gcb_co2_ffi <- data_gcb_co2_ffi %>% 
-#     rename(year=X1) %>% 
-#     mutate(iso=countrycode(country,"country.name","iso3c",warn=FALSE))
-#   
-#   data_gcb_co2_ffi$iso[grepl("Türkiye",data_gcb_co2_ffi$country)] <- "TUR"
-#   
-#   data_gcb_co2_ffi <- data_gcb_co2_ffi %>% 
-#     #mutate(iso=ifelse(country=="Netherlands Antilles","ANT",iso)) %>% 
-#     #mutate(iso=ifelse(country=="Türkiye","TUR",iso)) %>% 
-#     mutate(value=value/1000) %>% 
-#     mutate(value=value*(44/12)) %>%
-#     mutate(units="GtCO2") %>% 
-#     select(country,iso,units,year,value) 
-#   
-#   return(data_gcb_co2_ffi) 
-# }
+
 
 ## Global Carbon Project CO2 FFI (https://globalcarbonbudget.org/carbonbudget2023/)
 
 data_gcb_co2_ffi <- load_gcb_countries_ffi(read.xlsx("sources/National_Fossil_Carbon_Emissions_2023v1.0.xlsx",sheet=2,startRow = 12))
 data_gcb_co2_ffi$iso[grepl("Türkiye",data_gcb_co2_ffi$country)] <- "TUR"
 
+
 ## Global Carbon Project CO2 LUC (https://globalcarbonbudget.org/carbonbudget2023/)
 
 data_gcb_co2_luc <- load_gcb_countries_luc(
-  readxl::read_xlsx('Sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=2),
-  readxl::read_xlsx('Sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=3),
-  readxl::read_xlsx('Sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4)
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=2),
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=3),
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4)
 )
 data_gcb_co2_luc$iso[grepl("Türkiye",data_gcb_co2_luc$country)] <- "TUR"
+
 
 ## Global Carbon Project CO2 consumption
 
@@ -189,20 +217,7 @@ data_gcb_co2_cons <- data_gcb_co2_cons %>%
   mutate(units="GtCO2") %>% 
   select(country,iso,units,year,value) 
   
-  
 
-
-# # Note for coding simplicity I average the bookkeeping models at the national level, before aggregating to regions later on. Results would be slightly different if emissions were summed by model and region, then averaged. NAs ignored
-# 
-# 
-# data_gcb_lulucf_ntl <- data_gcb_lulucf_ntl %>% 
-#   group_by(country,year,units) %>% 
-#   summarise(value=mean(value,na.rm=TRUE))
-# 
-# data_gcb_lulucf_ntl <- spread(data_gcb_lulucf_ntl,year,value)
-# data_gcb_lulucf_ntl <- data_gcb_lulucf_ntl %>% 
-#   mutate(iso=countrycode(country,"country.name","iso3c")) %>% 
-#   mutate(iso=ifelse(country=="Netherlands Antilles","ANT",iso))
 
 
 ```
@@ -214,7 +229,7 @@ data_gcb_co2_cons <- data_gcb_co2_cons %>%
 data_indicators <- data_edgar %>% 
   filter(year==2022) %>% 
   group_by(iso,country) %>% 
-  summarise(ghg_total=sum(value,na.rm=TRUE)/1e3)
+  summarise(ghg_total=sum(value,na.rm=TRUE)/1e6)
 
 ## Per capita GHG emissions
 
@@ -272,22 +287,40 @@ data_indicators <- data_indicators %>%
 
 country_iso=c("CHN")
 
-plot_country <- function(country_iso,data_edgar,data_indicators) {
+plot_country <- function(country_iso,data_ghg,data_indicators) {
   
   ## GHG emissions trend plot
   
-  data_countries <- data_edgar %>% 
+  data_countries <- data_ghg %>% 
     filter(iso==country_iso) %>% 
     filter(year>=1990) %>% 
-    group_by(iso,country,sector,sector_codes,year) %>%
-    summarise(value=sum(value,na.rm=TRUE)/1e3)
+    rename(sector=sector_tier_2) %>% 
+    group_by(iso,country,sector,year) %>%
+    summarise(value=sum(value,na.rm=TRUE)/1e6)
   
-  my_colours <- more_set2_colors(length(unique(data_countries$sector)))
+  
+  labels <- read.xlsx("sources/cc_sectors.xlsx",sheet=2)
+  labels <- labels %>% 
+    arrange(desc(position)) %>% 
+    mutate(position=1) %>% 
+    mutate(position=cumsum(position))
+  
+  labels$sector <- fct_reorder(labels$sector,labels$position)
+  
+  
+  data_countries$sector <- fct_relevel(data_countries$sector,"Land use")
+  my_colours <- labels %>% select(sector,colour)
+  my_colours$sector <- gsub("   ","",my_colours$sector)
+  my_colours <- left_join(data_countries %>% 
+    ungroup() %>% 
+    select(sector) %>% 
+    distinct() %>% 
+    arrange(sector),my_colours)
   
   p1 <- data_countries %>% ggplot(aes(x=year,y=value,fill=sector)) +
     geom_area(color="#636363") +
     theme_wl() +
-    scale_fill_manual(values = my_colours) +
+    scale_fill_manual(values = my_colours$colour) +
     ylab("GHG Emissions (MtCO2e/year)") +
     theme(axis.title.x = element_blank(),
           panel.grid.major.x = element_blank(),
@@ -297,82 +330,14 @@ plot_country <- function(country_iso,data_edgar,data_indicators) {
           legend.position = "none",panel.background = element_blank())
   
   
-  # data_countries_labels <- data_countries %>% 
-  #   group_by(year,sector) %>% 
-  #   summarise(value=sum(value,na.rm=TRUE))
-  # data_countries_labels <- locate_shares(data_countries_labels,"sector",2022)
-  # data_countries_labels <- data_countries %>% 
-  #   filter(year==2022) %>% 
-  #   arrange(desc(sector)) %>% 
-  #   group_by(year) %>% 
-  #   mutate(cumsum=cumsum(value)) %>% 
-  #   ungroup() %>% 
-  #   mutate(position=value/2) %>% 
-  #   arrange(sector) %>% 
-  #   mutate(location=cumsum-position)
-  
-  # p2 <- data_countries_labels %>%
-  #   ggplot(.,aes(x=1,y=location,label=str_wrap(sector,18),color=sector)) +
-  #   geom_text_repel(
-  #     nudge_x      = 0.25,
-  #     direction    = "y",
-  #     hjust        = 1,
-  #     segment.size = 0.2,
-  #     size=3.75
-  #   ) +
-  #   geom_blank(data=data_countries %>% filter(year==2022) %>% group_by(year) %>% summarise(value=sum(value)),inherit.aes=FALSE,aes(x=1,y=value)) +
-  #   theme_wl() +
-  #   #expand_limits(x = 0, y = 0) +
-  #   scale_color_manual(values = my_colours) + 
-  #     theme(axis.title = element_blank(),
-  #         panel.border = element_blank(),
-  #         legend.position="none",
-  #         axis.text.x = element_blank(),
-  #         axis.text.y = element_blank(),
-  #         axis.ticks = element_blank(),
-  #         panel.grid.major = element_blank(),
-  #         plot.background = element_blank(),
-  #         plot.margin = unit(c(0,0,0,0),"cm"))
-  
-  # labels <- data_countries_labels %>% 
-  #   select(sector) %>% 
-  #   distinct() %>% 
-  #   add_row(sector="Energy",.before=1) %>% 
-  #   mutate(position_b=1) %>% 
-  #   mutate(position_b=cumsum(position_b)) %>% 
-  #   mutate(sector=as.factor(sector))
-  # 
-  # labels$sector <- fct_reorder(labels$sector,labels$position_b)
-  # labels <- left_join(labels,data_countries_labels %>% select(sector,position_a=location))
-  
-  
-  ## legend for the ghg trend plot
-  
-  labels <- data_countries %>% 
-    ungroup() %>% 
-    select(sector) %>% 
-    distinct() %>% 
-    add_row(sector="Energy",.before=1) %>% 
-    mutate(position_b=1) %>% 
-    mutate(position_b=cumsum(position_b)) %>% 
-    mutate(sector=as.factor(sector))
-  
-  labels$sector <- fct_reorder(labels$sector,labels$position_b)
-  
-  labels <- labels %>% 
-    mutate(label=as.character(sector)) %>% 
-    mutate(label=ifelse(label %in% c("Power sector","Fossil production","Buildings","Transport","Industry"),paste0("  ",label),label)) %>% 
-    arrange(desc(sector)) %>% 
-    mutate(position_b=1) %>% 
-    mutate(position_b=cumsum(position_b))
-  
-  p2 <- labels %>%  ggplot(.,aes(y=position_b,label=label)) +
-    geom_point(aes(x=ifelse(sector %in% c("Power sector","Fossil production","Transport","Buildings","Industry"),2,1.9),fill=sector),
+  p2 <- labels %>%  ggplot(.,aes(y=position,label=sector)) +
+    geom_point(aes(x=ifelse(sector %in% c("Energy","Industrial processes","AFOLU","Waste & Other"),1.9,2),fill=sector),
                shape=22,size=3,color='#636363') +
     geom_text(hjust=0,aes(x=2.1),color='#636363',vjust=0.5) +
+    geom_vline(xintercept = 4,color='#636363') +
     theme_wl() +
-    scale_color_manual(values = c("white",my_colours)) +
-    scale_fill_manual(values = c("white",my_colours)) +
+    #scale_color_manual(values = c("white",'#636363','#636363','#636363','#636363','#636363','#636363','#636363','#636363','#636363','#636363')) +
+    scale_fill_manual(values = c(labels$colour)) +
     scale_x_continuous(limits=c(1.9,4)) +
     theme(axis.title = element_blank(),
           panel.border = element_blank(),
@@ -387,7 +352,9 @@ plot_country <- function(country_iso,data_edgar,data_indicators) {
   ## indicators plot
   
   p3 <- data_indicators %>% 
-    filter(iso==country_iso) %>% 
+    ungroup() %>% 
+    filter(iso==country_iso) %>%
+    add_row(var="empty",label="",value="") %>% 
     ggplot(.,aes(x=1,y=label,label=value)) +
     geom_text(size=10*(0.36),hjust=0,vjust=1,color='#636363')  +
     scale_y_discrete(labels = function(x) str_wrap(x, width = 20))+
@@ -399,12 +366,20 @@ plot_country <- function(country_iso,data_edgar,data_indicators) {
           panel.border = element_blank(),
           panel.grid = element_blank(),
           axis.text.x = element_blank(),
-          axis.text.y = element_text(size=10))
+          axis.text.y = element_text(size=10),
+          plot.caption = element_text(size=11,colour='#bdbdbd',hjust=1)) +
+    labs(caption='Sources: EDGAR | GCB | Grassi et al.')
   
   name <- countrycode(sourcevar = country_iso,origin="iso3c","country.name")
   
-  p <- p1 + p2 + plot_spacer() + (p3 /plot_spacer() + plot_layout(heights=c(4,1))) + plot_layout(widths=c(4.5,2,0.1,2)) +
-    plot_annotation(title=name,theme=theme_wl() + theme(plot.title=element_text(vjust=1,size=16),plot.background = element_rect(fill = NA, colour = '#636363', size = 0.5)))
+  p <- p1 + p2 + wrap_elements(p3) + plot_layout(widths=c(4.4,2.4,3.8)) +
+    plot_annotation(title=name,
+                    subtitle="Emissions trends and indicators",
+                    #caption = 'Sources: EDGAR | GCB | Grassi et al.',
+                    theme = theme_wl() + 
+                      theme(plot.title=element_text(vjust=1,size=16),
+                            plot.background = element_rect(fill = NA, colour = '#636363', size = 0.5),
+                            plot.caption = element_text(size=11,colour='#bdbdbd',hjust=1)))
   
   
   return(p)
@@ -423,18 +398,22 @@ countries <- countries %>%
 
 for (i in 1:length(countries$iso)) {
   
-  ggsave(plot_country(countries$iso[i],data_edgar,data_indicators),filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=10,dpi=300) 
-  ggsave(plot_country(countries$iso[i],data_edgar,data_indicators),filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=10) 
+  ggsave(plot_country(countries$iso[i],data_ghg,data_indicators),filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=10,dpi=300) 
+  ggsave(plot_country(countries$iso[i],data_ghg,data_indicators),filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=10) 
   
   
 }
 
 
-#plot_country(countries$iso[i],data_edgar,data_indicators)
+```
 
+```{r country_test, fig.width=10,fig.height=4}
 
+plot_country("RUS",data_ghg,data_indicators)
 
 ```
+
+
 
 ```{r asd, fig.width=10,fig.height=12, fig.path="results/countries/",dev=c('png','pdf','svg')}
 
