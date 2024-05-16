@@ -20,3 +20,8 @@
 "0","source(""https://raw.githubusercontent.com/lambwf/Codebase/main/load_gcb_countries_v2023.R"")"
 "0",""
 "0",""
+"0","cc_EU <- read.csv(""https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/european-union.csv"") %>% "
+"0","  select(iso=Code) %>% "
+"0","  mutate(EU=""EU27"")"
+"0",""
+"0",""
