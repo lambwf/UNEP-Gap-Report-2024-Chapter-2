@@ -97,29 +97,29 @@ wd_ember <- wd_ember %>%
   filter(Category=="Electricity generation") %>% 
   filter(Unit=="TWh")
 
+wd_ember <- wd_ember %>%
+  mutate(category=ifelse(Variable=="Wind and Solar","Wind and Solar",NA)) %>%
+  mutate(category=ifelse(Variable=="Coal","Fossil",category)) %>%
+  mutate(category=ifelse(Variable=="Gas","Fossil",category)) %>%
+  mutate(category=ifelse(Variable=="Nuclear","Nuclear",category)) %>%
+  mutate(category=ifelse(Variable=="Bioenergy","Other renewable",category)) %>%
+  mutate(category=ifelse(Variable=="Hydro","Other renewable",category)) %>%
+  mutate(category=ifelse(Variable=="Other Renewables","Other renewable",category)) %>%
+  mutate(category=ifelse(Variable=="Other Fossil","Fossil",category)) %>%
+  mutate(category=ifelse(Variable=="Total Generation","Total",category)) %>%
+  filter(!is.na(category))
+
 # wd_ember <- wd_ember %>% 
-#   mutate(category=ifelse(Variable=="Wind and Solar","Wind and Solar",NA)) %>% 
-#   mutate(category=ifelse(Variable=="Coal","Fossil",category)) %>% 
-#   mutate(category=ifelse(Variable=="Gas","Fossil",category)) %>% 
+#   mutate(category=ifelse(Variable=="Wind and Solar","Renewable (Wind & Solar)",NA)) %>% 
+#   mutate(category=ifelse(Variable=="Coal","Fossil (coal)",category)) %>% 
+#   mutate(category=ifelse(Variable=="Gas","Fossil (gas)",category)) %>% 
 #   mutate(category=ifelse(Variable=="Nuclear","Nuclear",category)) %>% 
-#   mutate(category=ifelse(Variable=="Bioenergy","Other renewable",category)) %>% 
-#   mutate(category=ifelse(Variable=="Hydro","Other renewable",category)) %>% 
-#   mutate(category=ifelse(Variable=="Other Renewables","Other renewable",category)) %>% 
-#   mutate(category=ifelse(Variable=="Other Fossil","Fossil",category)) %>% 
+#   mutate(category=ifelse(Variable=="Bioenergy","Renewable (other)",category)) %>% 
+#   mutate(category=ifelse(Variable=="Hydro","Renewable (other)",category)) %>% 
+#   mutate(category=ifelse(Variable=="Other Renewables","Renewable (other)",category)) %>% 
+#   mutate(category=ifelse(Variable=="Other Fossil","Fossil (other)",category)) %>% 
 #   mutate(category=ifelse(Variable=="Total Generation","Total",category)) %>% 
 #   filter(!is.na(category))
-
-wd_ember <- wd_ember %>% 
-  mutate(category=ifelse(Variable=="Wind and Solar","Renewable (Wind & Solar)",NA)) %>% 
-  mutate(category=ifelse(Variable=="Coal","Fossil (coal)",category)) %>% 
-  mutate(category=ifelse(Variable=="Gas","Fossil (gas)",category)) %>% 
-  mutate(category=ifelse(Variable=="Nuclear","Nuclear",category)) %>% 
-  mutate(category=ifelse(Variable=="Bioenergy","Renewable (other)",category)) %>% 
-  mutate(category=ifelse(Variable=="Hydro","Renewable (other)",category)) %>% 
-  mutate(category=ifelse(Variable=="Other Renewables","Renewable (other)",category)) %>% 
-  mutate(category=ifelse(Variable=="Other Fossil","Fossil (other)",category)) %>% 
-  mutate(category=ifelse(Variable=="Total Generation","Total",category)) %>% 
-  filter(!is.na(category))
 
 wd_ember <- rbind(wd_ember %>% filter(Area.type=="Country"),
                   wd_ember %>% filter(Area=="World"))
@@ -264,6 +264,18 @@ wd_data <- wd_data %>%
 
 blarg <- wd_data %>% filter(country=="World") %>% filter(year==2019)
 
+
+```
+
+``` {r power_sector_shares}
+
+wd_power <- wd_data %>% 
+  filter(category!="Total") %>% 
+  filter(sector=="Power") %>% 
+  #filter(year==2022) %>%  
+  group_by(country,iso,sector,year) %>% 
+  mutate(sector_total=sum(value)) %>% 
+  mutate(ratio=value/sector_total)
 
 ```
 

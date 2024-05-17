@@ -13,6 +13,7 @@
 "0","library(WDI)"
 "0","library(labelled)"
 "0","library(grid)"
+"0","library(ggimage)"
 "0",""
 "0","source(""https://raw.githubusercontent.com/lambwf/Codebase/main/figure_style.R"")"
 "0","source(""https://raw.githubusercontent.com/lambwf/Codebase/main/reshape_with_labels.R"")"
