@@ -442,27 +442,27 @@ plot_country <- function(country_iso,data_ghg,data_indicators,annotations) {
 
 ```{r plots, fig.width=8.5,fig.height=4}
 
-countries <- data_indicators %>% filter(!is.na(population)) %>% filter(!is.na(co2_consumption)) %>% select(iso) %>% distinct()
-countries <- countries %>%
-  mutate(country=countrycode(iso,"iso3c","country.name")) %>%
-  mutate(country=ifelse(iso=="EU27","European Union",country))
-
-for (i in 1:length(countries$iso)) {
-
-  ggsave(plot_country(countries$iso[i],data_ghg,data_indicators,"yes"),filename = paste0(countries$country[i],".png"),path = "results/countries",device = "png",height = 4,width=8.5,dpi=300)
-  ggsave(plot_country(countries$iso[i],data_ghg,data_indicators,"yes"),filename = paste0(countries$country[i],".pdf"),path = "results/countries",device = "pdf",height = 4,width=8.5)
-
-
-}
+# countries <- data_indicators %>% filter(!is.na(population)) %>% filter(!is.na(co2_consumption)) %>% select(iso) %>% distinct()
+# countries <- countries %>%
+#   mutate(country=countrycode(iso,"iso3c","country.name")) %>%
+#   mutate(country=ifelse(iso=="EU27","European Union",country))
+# 
+# for (i in 1:length(countries$iso)) {
+# 
+#   ggsave(plot_country(countries$iso[i],data_ghg,data_indicators,"yes"),filename = paste0(countries$country[i],".png"),path = "results/countries",device = "png",height = 4,width=8.5,dpi=300)
+#   ggsave(plot_country(countries$iso[i],data_ghg,data_indicators,"yes"),filename = paste0(countries$country[i],".pdf"),path = "results/countries",device = "pdf",height = 4,width=8.5)
+# 
+# 
+# }
 
 
 ```
 
 ```{r country_test, fig.width=8.5,fig.height=4}
-
-plot_country("BRA",data_ghg,data_indicators,"yes")
-
-ggsave(plot_country("BRA",data_ghg,data_indicators,"yes"),filename = "test.png",path = "results/",device = "png",height = 4,width=8.5,dpi=300)
+# 
+# plot_country("BRA",data_ghg,data_indicators,"yes")
+# 
+# ggsave(plot_country("BRA",data_ghg,data_indicators,"yes"),filename = "test.png",path = "results/",device = "png",height = 4,width=8.5,dpi=300)
 
 ```
 
@@ -484,85 +484,11 @@ p4 <- plot_country("EU27",data_ghg,data_indicators,"no")
 p5 <- plot_country("RUS",data_ghg,data_indicators,"no")
 p6 <- plot_country("BRA",data_ghg,data_indicators,"no")
 
-ggsave(wrap_elements(p1) / wrap_elements(p2) / wrap_elements(p3),filename = "figure_top_emitters_1.png",path = "results/",device = "png",height = 12,width=8,dpi=300)
-ggsave(wrap_elements(p4) / wrap_elements(p5) / wrap_elements(p6),filename = "figure_top_emitters_1.png",path = "results/",device = "png",height = 12,width=8,dpi=300)
+ggsave(wrap_elements(p1) / wrap_elements(p2) / wrap_elements(p3),filename = "figure_top_emitters_1.png",path = "results/",device = "png",height = 12,width=8.5,dpi=300)
+ggsave(wrap_elements(p4) / wrap_elements(p5) / wrap_elements(p6),filename = "figure_top_emitters_2.png",path = "results/",device = "png",height = 12,width=8.5,dpi=300)
 
 ```
 
-``` {r figure_global_sectors,fig.width=8,fig.height=4, fig.path="results/",dev=c('png','pdf','svg')}
-
-## GHG emissions trend plot
-
-# data_world <- data_ghg %>% 
-#   filter(iso!="EU27") %>% 
-#   filter(year>=1990) %>% 
-#   rename(sector=sector_tier_2) %>% 
-#   group_by(sector,year) %>%
-#   summarise(value=sum(value,na.rm=TRUE)/1e9)
-# 
-# 
-# ## replace land use emissions
-# data_world <- data_world %>% 
-#   filter(sector!="LULUCF")
-# data_world <- rbind(data_world,data_gcb_co2_luc %>% 
-#                       filter(year>=1990) %>% 
-#                       filter(country=="Global") %>% 
-#                       select(year,value=mean) %>% 
-#                       mutate(sector="LULUCF") %>% 
-#                       mutate(year=as.numeric(year)) %>% 
-#                       mutate(sector=as.factor(sector)))
-# 
-# 
-# labels <- read.xlsx("sources/cc_sectors.xlsx",sheet=2)
-# labels <- labels %>% 
-#   arrange(desc(position)) %>% 
-#   mutate(position=1) %>% 
-#   mutate(position=cumsum(position))
-# 
-# labels$sector <- fct_reorder(labels$sector,labels$position)
-# 
-# my_colours <- labels %>% select(sector,colour)
-# my_colours$sector <- gsub("   ","",my_colours$sector)
-# my_colours <- left_join(data_world %>% 
-#                           ungroup() %>% 
-#                           select(sector) %>% 
-#                           distinct() %>% 
-#                           arrange(sector),my_colours)
-# 
-# p1 <- data_world %>% ggplot(aes(x=year,y=value,fill=sector)) +
-#   geom_area(color="#636363") +
-#   theme_wl() +
-#   scale_fill_manual(values = my_colours$colour) +
-#   ylab("GHG Emissions (MtCO2e/year)") +
-#   theme(axis.title.x = element_blank(),
-#         panel.grid.major.x = element_blank(),
-#         panel.border = element_blank(),
-#         axis.line.x=element_line(colour='#636363'),
-#         axis.line.y=element_line(colour='#636363'),
-#         legend.position = "none",panel.background = element_blank())
-# 
-# 
-# p2 <- labels %>%  ggplot(.,aes(y=position,label=sector)) +
-#   geom_point(aes(x=ifelse(sector %in% c("Energy","Industrial processes","AFOLU","Waste & Other"),1.9,2),fill=sector),
-#              shape=22,size=3,color='#636363') +
-#   geom_text(hjust=0,aes(x=2.1),color='#636363',vjust=0.5) +
-#   theme_wl() +
-#   #scale_color_manual(values = c("white",'#636363','#636363','#636363','#636363','#636363','#636363','#636363','#636363','#636363','#636363')) +
-#   scale_fill_manual(values = c(labels$colour)) +
-#   scale_x_continuous(limits=c(1.9,4)) +
-#   theme(axis.title = element_blank(),
-#         panel.border = element_blank(),
-#         legend.position="none",
-#         axis.text.x = element_blank(),
-#         axis.text.y = element_blank(),
-#         axis.ticks = element_blank(),
-#         panel.grid.major = element_blank(),
-#         plot.background = element_blank(),
-#         plot.margin = unit(c(0,0,0,0),"cm"))
-# 
-# p1 + p2 + plot_layout(widths=c(4,2))
-
-```
 
 ``` {r save}
 
@@ -580,7 +506,7 @@ data_output <- rbind(data_output,data_lulucf %>%
 
 data_output <- data_output %>% 
   group_by(iso) %>% 
-  mutate(`Total GHG emissions (MtCO2e)`=sum(value)) %>% 
+  mutate(`Total GHG emissions (MtCO2e)`=sum(value,na.rm=TRUE)) %>% 
   mutate(ratio=value/`Total GHG emissions (MtCO2e)`*100) %>% 
   mutate(ratio=round(ratio,2))
 
@@ -590,6 +516,11 @@ data_output$subsector <- fct_rev(data_output$subsector)
 
 data_output <- data_output %>% 
   mutate(country=countrycode(iso,"iso3c","country.name")) %>% 
+  mutate(country=ifelse(iso=="ANT","Netherlands Antilles",country)) %>% 
+  mutate(country=ifelse(iso=="SCG","Serbia and Montenegro",country)) %>% 
+  mutate(country=ifelse(iso=="AIR","Intl. Aviation",country)) %>% 
+  mutate(country=ifelse(iso=="SEA","Intl. Shipping",country)) %>% 
+  mutate(country=ifelse(iso=="EU27","European Union",country)) %>% 
   select(country,iso,everything())
 
 

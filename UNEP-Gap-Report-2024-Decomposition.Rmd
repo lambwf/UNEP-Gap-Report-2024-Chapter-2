@@ -1,0 +1,148 @@
+---
+title: "UNEP-Gap-Report-2024-Decomposition"
+author: "William F. Lamb"
+date: "3 6 2024"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+
+rm(list = ls())
+
+library(tidyverse)
+library(openxlsx)
+library(countrycode)
+library(ggrepel)
+library(patchwork)
+library(zoo)
+library(RColorBrewer)
+library(WDI)
+library(labelled)
+library(grid)
+library(ggimage)
+
+source("https://raw.githubusercontent.com/lambwf/Codebase/main/figure_style.R")
+source("https://raw.githubusercontent.com/lambwf/Codebase/main/reshape_with_labels.R")
+source("https://raw.githubusercontent.com/lambwf/Codebase/main/locate_shares.R")
+source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_gcb_countries_v2023.R")
+source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_edgar_v8.R")
+
+
+
+```
+
+
+
+```{r load_EDGAR}
+
+## load EDGAR data (https://edgar.jrc.ec.europa.eu/dataset_ghg80)
+
+edgar_co2 <- read.xlsx("sources/IEA_EDGAR_CO2_1970_2022.xlsx",sheet=2,startRow=10)
+edgar_ch4 <- read.xlsx("sources/EDGAR_CH4_1970_2022.xlsx",sheet=2,startRow = 10)
+edgar_n2o <- read.xlsx("sources/EDGAR_N2O_1970_2022.xlsx",sheet=2,startRow = 10)
+edgar_fgas <- read.xlsx("sources/EDGAR_F-gases_1990_2022.xlsx",sheet=2,startRow = 10)
+data_ghg <- load_edgar(edgar_co2,edgar_ch4,edgar_n2o,edgar_fgas)
+
+
+## join GWPs and calculate CO2e
+
+gwps <- read.csv("https://raw.githubusercontent.com/openclimatedata/globalwarmingpotentials/main/globalwarmingpotentials.csv",skip = 9)
+
+data_ghg$gas <- gsub("-","",data_ghg$gas)
+data_ghg <- left_join(data_ghg,gwps %>% select(gas=Species,AR6GWP100)) %>% 
+  mutate(AR6GWP100=ifelse(gas=="CO2",1,AR6GWP100))
+
+# check all gwps joined
+check <- data_ghg %>% filter(is.na(AR6GWP100))
+check <- data_ghg %>% select(gas,AR6GWP100) %>% distinct()
+
+data_ghg <- data_ghg %>% mutate(value_gwp=value*AR6GWP100)
+
+
+list_fgases <- data_ghg %>% 
+  select(gas) %>% 
+  distinct() %>% 
+  mutate(group=ifelse(gas=="CO2","CO2 Fossil",NA)) %>% 
+  mutate(group=ifelse(gas=="CH4","CH4",group)) %>% 
+  mutate(group=ifelse(gas=="N2O","N2O",group)) %>% 
+  mutate(group=ifelse(is.na(group),"Fgases",group))
+
+data_ghg <- left_join(data_ghg,list_fgases,by="gas")
+data_ghg <- data_ghg %>% 
+  mutate(gas=group) %>% 
+  group_by(iso,country,code,code_description,gas,year) %>% 
+  summarise(value=sum(value_gwp,na.rm=TRUE))
+
+## Gg to tons
+data_ghg$value = data_ghg$value*1000
+
+# check global totals
+check <- data_ghg %>% filter(year==2022) %>% group_by(gas) %>% summarise(value=sum(value,na.rm=T))
+sum(check$value)
+
+
+### consistent names
+
+newnames <- data_ghg %>% 
+  ungroup() %>% 
+  select(iso) %>% 
+  distinct() %>% 
+  mutate(newname=countrycode(iso,"iso3c","country.name")) %>% 
+  mutate(newname=ifelse(iso=="AIR","Intl. Aviation",newname)) %>% 
+  mutate(newname=ifelse(iso=="SEA","Intl. Shipping",newname)) %>% 
+  mutate(newname=ifelse(iso=="SCG","Serbia and Montenegro",newname)) %>% 
+  mutate(newname=ifelse(iso=="ANT","Netherlands Antilles",newname))
+
+data_ghg <- left_join(data_ghg,newnames,by="iso") %>% 
+  mutate(country=newname) %>% 
+  select(-newname) %>% 
+  filter(!is.na(iso))
+
+
+### aggregate sectors
+
+write.xlsx(data_ghg %>% ungroup() %>% select(code,code_description) %>% distinct() %>% arrange(code),"cc_sectors.xlsx")
+data_ghg <- left_join(data_ghg,read.xlsx("sources/cc_sectors.xlsx"),by=join_by(code, code_description))
+
+data_ghg$gas <- as.factor(data_ghg$gas)
+data_ghg$gas <- fct_relevel(data_ghg$gas,"CO2 Fossil","CH4","N2O","Fgases")
+
+data_ghg$subsector <- as.factor(data_ghg$subsector)
+data_ghg$subsector <- fct_reorder(data_ghg$subsector,data_ghg$subsector_order)
+
+
+data_ghg <- data_ghg %>% 
+  mutate(year=as.numeric(year)) %>% 
+  group_by(iso,country,sector,subsector,subsector_codes,gas,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE))
+
+
+## Global Carbon Project CO2 LUC (https://globalcarbonbudget.org/carbonbudget2023/)
+
+data_gcb_co2_luc <- load_gcb_countries_luc(
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=2),
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=3),
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4)
+)
+data_gcb_co2_luc$iso[grepl("Türkiye",data_gcb_co2_luc$country)] <- "TUR"
+
+
+
+wd_iea <- read.csv("sources/not public/WBAL_17052024175316637.csv")
+wd_iea <- wd_iea %>% 
+  mutate(sector=Flow) %>% 
+  mutate(sector=ifelse(sector=="Residential","Buildings",sector)) %>% 
+  mutate(sector=ifelse(sector=="Commercial and public services","Buildings",sector)) %>% 
+  select(country=Country,sector,product=Product,year=Time,value=Value)
+wd_iea <- wd_iea %>% 
+  filter(year>=1990)
+
+
+```
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
