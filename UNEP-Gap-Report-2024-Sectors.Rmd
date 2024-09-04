@@ -18,6 +18,7 @@ library(ggrepel)
 library(patchwork)
 library(zoo)
 library(RColorBrewer)
+library(WDI)
 
 
 source("https://raw.githubusercontent.com/lambwf/Codebase/main/figure_style.R")
@@ -36,12 +37,12 @@ wd_ember <- wd_ember %>%
   filter(Unit=="TWh")
 
 wd_ember <- wd_ember %>%
-  mutate(category=ifelse(Variable=="Wind and Solar","Wind & Solar",NA)) %>%
+  mutate(category=ifelse(Variable=="Wind and Solar","Wind, Solar, Hydro",NA)) %>%
   mutate(category=ifelse(Variable=="Coal","Fossil (coal)",category)) %>%
   mutate(category=ifelse(Variable=="Gas","Fossil (gas)",category)) %>%
-  mutate(category=ifelse(Variable=="Nuclear","Nuclear & Hydro",category)) %>%
+  mutate(category=ifelse(Variable=="Nuclear","Nuclear",category)) %>%
   mutate(category=ifelse(Variable=="Bioenergy","Other renewable",category)) %>%
-  mutate(category=ifelse(Variable=="Hydro","Nuclear & Hydro",category)) %>%
+  mutate(category=ifelse(Variable=="Hydro","Wind, Solar, Hydro",category)) %>%
   mutate(category=ifelse(Variable=="Other Renewables","Other renewable",category)) %>%
   mutate(category=ifelse(Variable=="Other Fossil","Other Fossil",category)) %>%
   mutate(category=ifelse(Variable=="Total Generation","Total",category)) %>%
@@ -216,7 +217,7 @@ wd_data$country <- fct_relevel(wd_data$country,"World","China","United States","
 
 ```
 
-``` {r figure_sector_fossil_shares,fig.width=10,fig.height=10,fig.path="results/",dev=c('png','pdf','svg')}
+``` {r figure_sector_fossil_shares,fig.width=10,fig.height=10,fig.path="results/",dev=c('png','pdf')}
 
 wd_data$category <- as.factor(wd_data$category)
 
@@ -228,13 +229,13 @@ wd_power <- wd_data %>%
   mutate(ratio=value/sector_total) %>% 
   mutate(ratio=ratio*100)
 
-p1 <- wd_power %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Wind & Solar","Nuclear & Hydro")) %>% 
+p1 <- wd_power %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Wind, Solar, Hydro","Nuclear")) %>% 
   filter(year<=2022) %>% 
   ggplot(.,aes(x=year,y=ratio,color=category,group=category)) +
   geom_path(size=1) +
   geom_text_repel(data=wd_power %>% 
                     filter(year==2022) %>% 
-                    filter(category %in% c("Fossil (coal)","Fossil (gas)","Wind & Solar","Nuclear & Hydro")),
+                    filter(category %in% c("Fossil (coal)","Fossil (gas)","Wind, Solar, Hydro","Nuclear")),
                   inherit.aes=FALSE,aes(x=2025,y=ratio,label=round(ratio),color=category),
     nudge_x      = 0.25,
     direction    = "y",
@@ -269,10 +270,10 @@ wd_industry <- wd_data %>%
   mutate(ratio=ratio*100) %>% 
   filter(year<=2021)
 
-p2 <- wd_industry %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Power sector")) %>% 
+p2 <- wd_industry %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Fossil (oil)","Power sector")) %>% 
   ggplot(.,aes(x=year,y=ratio,color=category,group=category)) +
   geom_path(size=1) +
-  geom_text_repel(data=wd_industry %>% filter(year==2021) %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Power sector")),
+  geom_text_repel(data=wd_industry %>% filter(year==2021) %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Fossil (oil)","Power sector")),
                   inherit.aes=FALSE,aes(x=2025,y=ratio,label=round(ratio),color=category),
     nudge_x      = 0.25,
     direction    = "y",
@@ -287,7 +288,7 @@ p2 <- wd_industry %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Pow
   scale_x_continuous(limits=c(1990,2030),breaks=c(2000,2021)) +
   scale_y_continuous(limits=c(0,100))+
   #scale_colour_manual(breaks=levels(wd_data$category),values = my_colors$colours) +
-  scale_color_manual(values=c("#525252","#bf812d","#35978f")) +
+  scale_color_manual(values=c("#525252","#bf812d","#d8b365","#35978f")) +
   labs(title="Industry",
        subtitle="Share of annual final energy consumption (%)") +
   theme(axis.title=element_blank(),
@@ -308,10 +309,13 @@ wd_buildings <- wd_data %>%
   mutate(ratio=ratio*100) %>% 
   filter(year<=2021)
 
-p3 <- wd_buildings %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector")) %>% 
+
+wd_buildings$category <- fct_relevel(wd_buildings$category,"Bioenergy",after = Inf)
+
+p3 <- wd_buildings %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector","Bioenergy")) %>% 
   ggplot(.,aes(x=year,y=ratio,color=category,group=category)) +
   geom_path(size=1) +
-  geom_text_repel(data=wd_buildings %>% filter(year==2021) %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector")),
+  geom_text_repel(data=wd_buildings %>% filter(year==2021) %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector","Bioenergy")),
                   inherit.aes=FALSE,aes(x=2025,y=ratio,label=round(ratio),color=category),
     nudge_x      = 0.25,
     direction    = "y",
@@ -326,7 +330,7 @@ p3 <- wd_buildings %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Pow
   scale_x_continuous(limits=c(1990,2030),breaks=c(2000,2021)) +
   scale_y_continuous(limits=c(0,100))+
   #scale_colour_manual(breaks=levels(wd_data$category),values = my_colors$colours) +
-  scale_color_manual(values=c("#bf812d","#d8b365","#35978f")) +
+  scale_color_manual(values=c("#bf812d","#d8b365","#35978f","#80cdc1")) +
   labs(title="Buildings",
        subtitle="Share of annual final energy consumption (%)") +
   theme(axis.title=element_blank(),
@@ -347,10 +351,12 @@ wd_transport <- wd_data %>%
   mutate(ratio=ratio*100) %>% 
   filter(year<=2021)
 
-p4 <- wd_transport %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector")) %>% 
+wd_transport$category <- fct_relevel(wd_transport$category,"Bioenergy",after = Inf)
+
+p4 <- wd_transport %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector","Bioenergy")) %>% 
   ggplot(.,aes(x=year,y=ratio,color=category,group=category)) +
   geom_path(size=1) +
-  geom_text_repel(data=wd_transport %>% filter(year==2021) %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector")),
+  geom_text_repel(data=wd_transport %>% filter(year==2021) %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector","Bioenergy")),
                   inherit.aes=FALSE,aes(x=2025,y=ratio,label=round(ratio),color=category),
     nudge_x      = 0.25,
     direction    = "y",
@@ -366,7 +372,7 @@ p4 <- wd_transport %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Pow
   scale_x_continuous(limits=c(1990,2030),breaks=c(2000,2021)) +
   scale_y_continuous(limits=c(0,100)) +
   #scale_colour_manual(breaks=levels(wd_data$category),values = my_colors$colours) +
-  scale_color_manual(values=c("#bf812d","#d8b365","#35978f")) +
+  scale_color_manual(values=c("#bf812d","#d8b365","#35978f","#80cdc1")) +
   #scale_color_manual(values=c("#8c510a","#35978f")) +
   labs(title="Transport",
        subtitle="Share of annual final energy consumption (%)") +
@@ -379,6 +385,23 @@ p4 <- wd_transport %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Pow
 
 p1 / p2 / p3 / p4 
 
+
+wd_table <- wd_power %>%
+  filter(category %in% c("Fossil (coal)","Fossil (gas)","Wind, Solar, Hydro","Nuclear")) %>%
+  filter(year<=2022)
+
+wd_table <- rbind(wd_table,wd_industry %>% filter(category %in% c("Fossil (coal)","Fossil (gas)","Fossil (oil)","Power sector")))
+wd_table <- rbind(wd_table,wd_buildings %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector","Bioenergy")))
+wd_table <- rbind(wd_table,wd_transport %>% filter(category %in% c("Fossil (gas)","Fossil (oil)","Power sector","Bioenergy")))
+wd_table <- spread(wd_table %>% ungroup() %>% select(-sector_total,-value,-iso),year,ratio)
+wd_table$sector <- as.factor(wd_table$sector)
+wd_table$sector <- fct_relevel(wd_table$sector,"Power","Industry","Buildings","Transport")
+
+wd_table <- wd_table %>%
+  select(sector,country,category,units,everything()) %>%
+  arrange(sector,country,category)
+
+write.xlsx(wd_table,"blarg.xlsx")
 
 ```
 
@@ -398,16 +421,49 @@ wd_stats <- wd_stats %>%
   mutate(change=ifelse(change>0,paste0("+",change),paste0(change))) %>% 
   filter(year==2021)
 
+## Population data from the World Bank
+
+data_wdi_pop<-WDI(country = "all",indicator = "SP.POP.TOTL",start = 1970,end = 2023,extra=TRUE,language = "en") 
+data_wdi_pop <- data_wdi_pop %>%
+  rename(iso=iso3c,population=SP.POP.TOTL) %>% 
+  filter(!is.na(iso)) %>% 
+  select(iso,year,population) %>% 
+  mutate(iso=ifelse(iso=="EUU","EU27",iso))
+
+wd_stats <- left_join(wd_stats,data_wdi_pop,by=c("iso","year"))
+
+wd_stats <- wd_stats %>% 
+  mutate(value_pc=value/population*1e9) %>% 
+  mutate(value_pc=signif(value_pc,3))
+
 wd_stats$sector <- as.factor(wd_stats$sector)
 wd_stats$sector <- fct_relevel(wd_stats$sector,"Power","Industry","Buildings","Transport")
 
 wd_stats <- wd_stats %>% 
-  arrange(sector) %>% 
-  select(-value,-units,-iso,-year)
+  arrange(sector)
 
-wd_stats <- spread(wd_stats,country,change)
+wd_stats_change <- spread(wd_stats %>% select(country,sector,change),country,change)
 
-write.xlsx(wd_stats,"results/UNEP-Gap-Report-2024-Sector-Demand-Change.xlsx")
+wd_stats_pc <- spread(wd_stats %>% select(country,sector,value_pc),country,value_pc)
+wd_stats_pc <- wd_stats_pc %>% 
+  mutate(sector=ifelse(sector=="Power","Power (kWh/capita)",paste0(sector," (GJ/capita)")))
+
+
+
+
+wb <- createWorkbook()
+
+addWorksheet(wb,"TA_table_3")
+writeData(wb, sheet = "TA_table_3", wd_stats_change, colNames = T, rowNames = F)
+
+addWorksheet(wb,"TA_table_4")
+writeData(wb, sheet = "TA_table_4", wd_stats_pc, colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/UNEP-Gap-Report-2024-Sectors.xlsx"),overwrite=T)
+
+
+
+
 
 
 ## fossil vs non-fossil

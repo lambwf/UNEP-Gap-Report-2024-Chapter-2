@@ -55,8 +55,7 @@ Caused by warning in `countrycode_convert()`:
 "0","wd_data <- wd_data %>% "
 "0","  group_by(country,iso,sector,category,units,year) %>% "
 "0","  summarise(value=sum(value,na.rm=T))"
-"1","[38;5;232m`summarise()` has grouped output by 'country', 'iso', 'sector', 'category', 'units'. You can override using the `.groups` argument.[39m
-"
+"0",""
 "0","########### get G20"
 "0",""
 "0","cc_G20 <- read.csv(""https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv"") %>% "

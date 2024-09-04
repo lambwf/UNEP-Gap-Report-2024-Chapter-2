@@ -8,6 +8,7 @@ output: word_document
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(echo = FALSE)
+options(dplyr.summarise.inform = FALSE)
 
 rm(list = ls())
 
@@ -29,20 +30,20 @@ source("https://raw.githubusercontent.com/lambwf/Codebase/main/locate_shares.R")
 source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_gcb_countries_v2023.R")
 source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_edgar_v9.R")
 
+wb <- createWorkbook()
 
 ```
 
 
 ```{r load_EDGAR}
 
-options(dplyr.summarise.inform = FALSE)
 
 ## load EDGAR data (https://edgar.jrc.ec.europa.eu/dataset_ghg80)
 
-edgar_co2 <- read.xlsx("sources/not public/EDGAR_2024_CO2_1970_2023.xlsx",sheet=1,startRow=9)
-edgar_ch4 <- read.xlsx("sources/not public/EDGAR_2024_CH4_1970_2023.xlsx",sheet=1,startRow = 9)
-edgar_n2o <- read.xlsx("sources/not public/EDGAR_2024_N2O_1970_2023.xlsx",sheet=1,startRow = 9)
-edgar_fgas <- read.xlsx("sources/not public/EDGAR_2024_F-gases_1970_2023.xlsx",sheet=1,startRow = 9)
+edgar_co2 <- read.xlsx("sources/not public/EDGAR_2024_CO2_1970_2023_v2.xlsx",sheet=2,startRow=9)
+edgar_ch4 <- read.xlsx("sources/not public/EDGAR_2024_CH4_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+edgar_n2o <- read.xlsx("sources/not public/EDGAR_2024_N2O_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+edgar_fgas <- read.xlsx("sources/not public/EDGAR_2024_F-gases_1970_2023_v2.xlsx",sheet=2,startRow = 9)
 data_ghg <- load_edgar(edgar_co2,edgar_ch4,edgar_n2o,edgar_fgas)
 
 
@@ -114,13 +115,25 @@ newnames <- data_ghg %>%
   mutate(newname=ifelse(iso=="AIR","Intl. Aviation",newname)) %>% 
   mutate(newname=ifelse(iso=="SEA","Intl. Shipping",newname)) %>% 
   mutate(newname=ifelse(iso=="SCG","Serbia and Montenegro",newname)) %>% 
-  mutate(newname=ifelse(iso=="ANT","Netherlands Antilles",newname))
+  mutate(newname=ifelse(iso=="ANT","Netherlands Antilles",newname)) %>% 
+  mutate(newname=ifelse(iso=="WLD","World",newname))
 
 data_ghg <- left_join(data_ghg,newnames,by="iso") %>% 
   mutate(country=newname) %>% 
   select(-newname) %>% 
   filter(!is.na(iso))
 
+## aggregate world
+
+data_ghg_world <- data_ghg %>% 
+  filter(iso!="WLD") %>% 
+  filter(gas!="CO2 LULUCF") %>% 
+  group_by(code,code_description,gas,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE)) %>% 
+  mutate(iso="WLD") %>% 
+  mutate(country="World")
+
+data_ghg <- rbind(data_ghg,data_ghg_world)
 
 ## aggregate sectors
 
@@ -149,7 +162,7 @@ data_ghg <- data_ghg %>%
 
 ```
 
-``` {r aggregate_EU}
+``` {r aggregates}
 
 ## aggregate EU
 
@@ -165,27 +178,127 @@ data_ghg_eu <- left_join(data_ghg,cc_EU,by="iso") %>%
   group_by(across(c(-value))) %>% 
   summarise(value=sum(value,na.rm=T))
 
-data_ghg_eu  <- rbind(data_ghg_eu,data_ghg %>% 
-  filter(iso=="EUR") %>% 
+data_ghg_eu <- rbind(data_ghg_eu,data_ghg %>% 
+    filter(iso=="EUR") %>% 
+    filter(sector_lv2=="AFOLU: LULUCF") %>% 
     mutate(iso="EU27") %>% 
     mutate(country="European Union"))
 
 data_ghg <- rbind(data_ghg %>% filter(iso!="EUR"),data_ghg_eu)
 
-data_ghg <- data_ghg %>% 
-  arrange(iso,country,gas,year,sector_lv2)
 
+## aggregate African Union
+
+cc_AU <- read.xlsx("sources/cc_African_Union.xlsx") %>% 
+  select(iso) %>% 
+  mutate(AU="1")
+
+data_ghg_au <- left_join(data_ghg,cc_AU,by="iso") %>%
+  filter(!is.na(AU)) %>% 
+  mutate(iso="AU55") %>% 
+  select(-AU) %>%
+  mutate(country="African Union") %>% 
+  group_by(across(c(-value))) %>% 
+  summarise(value=sum(value,na.rm=T))
+
+data_ghg <- rbind(data_ghg,data_ghg_au)
+
+
+## aggregate G7
+
+cc_G7 <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g7.csv") %>% 
+  select(iso=Code) %>% 
+  mutate(G7="1") %>% 
+  mutate(iso=ifelse(iso=="EUU","EU27",iso)) %>% 
+  filter(!iso %in% c("FRA","DEU","ITA"))                  ## no double counting EU countries!
+
+data_ghg_g7 <- left_join(data_ghg,cc_G7,by="iso") %>%
+  filter(!is.na(G7)) %>% 
+  mutate(iso="G7") %>% 
+  select(-G7) %>%
+  mutate(country="G7 Countries") %>% 
+  group_by(across(c(-value))) %>% 
+  summarise(value=sum(value,na.rm=T))
+
+data_ghg <- rbind(data_ghg,data_ghg_g7)
+
+
+## aggregate G20
 
 cc_G20 <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>% 
   select(iso=Code) %>% 
   mutate(G20="1") %>% 
-  mutate(iso=ifelse(iso=="EUU","EU27",iso))
+  mutate(iso=ifelse(iso=="EUU","EU27",iso)) %>%
+  #add_row(iso="AU55",G20="1") %>% 
+  #filter(!iso %in% c("ZAF")) %>%                          ## no double counting AU countries!
+  filter(!iso %in% c("FRA","DEU","ITA"))                  ## no double counting EU countries!
+  
+data_ghg_g20 <- left_join(data_ghg,cc_G20,by="iso") %>%
+  filter(!is.na(G20)) %>% 
+  mutate(iso="G20") %>% 
+  select(-G20) %>%
+  mutate(country="G20 Countries") %>% 
+  group_by(across(c(-value))) %>% 
+  summarise(value=sum(value,na.rm=T))
+
+data_ghg <- rbind(data_ghg,data_ghg_g20)
+
+
+## aggregate non-G20
+
+# data_ghg_ng20 <- left_join(data_ghg,cc_G20,by="iso")
+# data_ghg_ng20 <- left_join(data_ghg_ng20,cc_EU,by="iso")
+# #data_ghg_ng20 <- left_join(data_ghg_ng20,cc_AU,by="iso")
+# data_ghg_ng20 <- data_ghg_ng20 %>% 
+#   filter(is.na(G20)) %>% 
+#   filter(is.na(EU)) %>% 
+# #  filter(is.na(AU)) %>% 
+#   filter(!iso %in% c("AIR","SEA","G7","G20","AU55","WLD"))
+# 
+# cc_nG20 <- data_ghg_ng20 %>% 
+#   ungroup() %>% 
+#   select(iso) %>% 
+#   distinct() %>% 
+#   mutate(nG20="1")
+# 
+# data_ghg_ng20 <- data_ghg_ng20 %>% 
+#   mutate(iso="Non-G20") %>% 
+#   select(-G20,-EU,-AU) %>%
+#   mutate(country="Non-G20 Countries") %>% 
+#   group_by(across(c(-value))) %>% 
+#   summarise(value=sum(value,na.rm=T))
+# 
+# data_ghg <- rbind(data_ghg,data_ghg_ng20)
+
+
+cc_aggregates <- data_ghg %>%
+  ungroup() %>% 
+  select(iso,country) %>% 
+  distinct()
+
+cc_aggregates <- left_join(cc_aggregates,cc_AU,by="iso")
+cc_aggregates <- left_join(cc_aggregates,cc_EU,by="iso")
+cc_aggregates <- left_join(cc_aggregates,cc_G20,by="iso")
+cc_aggregates <- left_join(cc_aggregates,cc_G7,by="iso")
+#cc_aggregates <- left_join(cc_aggregates,cc_nG20,by="iso")
+cc_aggregates <- cc_aggregates %>% 
+  mutate(G20=ifelse(!is.na(EU),"1",G20)) %>% 
+  mutate(G20=ifelse(!is.na(AU),"1",G20))
+cc_aggregates <- gather(cc_aggregates,var,value,-iso,-country) %>% 
+  mutate(value=ifelse(value=="1","x",NA))
+cc_aggregates <- spread(cc_aggregates,var,value)
+
+
+data_ghg <- data_ghg %>%
+  arrange(iso,country,gas,year,sector_lv2)
+
 
 ```
 
 ``` {r edgar_inventory_comparison}
 
 data_countries <- data_ghg %>%
+  filter(iso!="AU55") %>% 
   filter(gas!="CO2 LULUCF") %>% 
   group_by(iso,country,year,gas) %>% 
   summarise(value=sum(value,na.rm=TRUE)) %>% 
@@ -248,41 +361,36 @@ data_countries <- rbind(data_countries,
                           mutate(iso=ifelse(iso=="EUR","EU27",iso)) %>%
                           filter(year<=2021))
 
+# data_countries <- left_join(data_countries,cc_G20 %>% 
+#                               add_row(iso="FRA",G20="1") %>% 
+#                               add_row(iso="DEU",G20="1") %>% 
+#                               add_row(iso="ITA",G20="1") %>% 
+#                               add_row(iso="ZAF",G20="1"),by="iso")
 
+# data_countries <- data_countries %>% 
+#   filter(G20==1) %>% 
+#   select(-G20)
 
-data_countries_eu <- left_join(data_countries,cc_EU,by="iso") %>% 
-  filter(dataset!="EDGARv9") %>% 
-  filter(dataset!="CRFs_2023") %>% 
-  filter(EU==1) %>% 
-  mutate(iso="EU27") %>% 
-  mutate(country="European Union") %>% 
-  group_by(across(c(-value))) %>% 
-  summarise(value=sum(value)) %>% 
-  select(-EU)
-
-data_countries <- rbind(data_countries,data_countries_eu)
-data_countries <- left_join(data_countries,cc_G20,by="iso")
-data_countries <- data_countries %>% 
-  filter(G20==1) %>% 
-  select(-G20)
-
-data_countries <- data_countries %>% 
-  arrange(iso,country,year,gas) %>% 
+names <- data_countries %>% 
+  ungroup() %>% 
+  select(iso) %>% 
+  distinct() %>% 
+  arrange(iso) %>% 
   mutate(country=countrycode(iso,"iso3c","country.name")) %>% 
+  mutate(country=ifelse(iso=="AIR","Intl. Aviation",country)) %>% 
+  mutate(country=ifelse(iso=="SEA","Intl. Shipping",country)) %>% 
   mutate(country=ifelse(iso=="EU27","European Union",country))
+  
 
+data_countries <- left_join(data_countries %>% ungroup() %>% select(-country),names,by="iso") %>% 
+  filter(!is.na(country)) %>% 
+  select(iso,country,year,gas,dataset,value) %>% 
+  arrange(iso,country,year,gas,dataset)
 
 data_countries <- spread(data_countries,year,value)
-# data_countries <- spread(data_countries,dataset,value)
-# 
-# 
-# wb <- createWorkbook()
-# 
-# addWorksheet(wb,"g20_totals_comparison")
-# writeData(wb, sheet = "g20_totals_comparison", data_countries, colNames = T, rowNames = F)
-# 
-# saveWorkbook(wb,paste0("results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx"),overwrite=T)
-# 
+
+addWorksheet(wb,"data_comparison")
+writeData(wb, sheet = "data_comparison", data_countries, colNames = T, rowNames = F)
 
 
 ```
@@ -291,6 +399,7 @@ data_countries <- spread(data_countries,year,value)
 
 high_emitters <- data_ghg %>% 
   filter(year==2023) %>% 
+  filter(!iso %in% c("WLD","G20","G7","AU55")) %>% 
   group_by(country,iso) %>% 
   summarise(value=sum(value,na.rm=TRUE)) %>% 
   ungroup() %>%
@@ -332,12 +441,18 @@ data_countries_crfs$country <- as.factor(data_countries_crfs$country)
 data_countries_crfs$country <- fct_reorder(data_countries_crfs$country,data_countries_crfs$rank)
 
 
+custom_scales <- data.frame(country=c("China","United States","India","European Union","Russia","Brazil"),
+                            x=2023,y=c(15000,10000,5000,5000,5000,5000))
+custom_scales$country <- as.factor(custom_scales$country)
+custom_scales$country <- fct_relevel(custom_scales$country,"China","United States","India","European Union","Russia","Brazil")
+
 p1 <- data_countries %>% 
   ggplot(aes(x=year,y=value,fill=sector_lv2)) +
   facet_wrap(.~country,scales="free_y",ncol=2) +
   geom_area(color="#636363") +
   geom_path(data=data_countries_crfs,
              inherit.aes=FALSE,aes(x=year,y=value,group=iso),size=1) +
+  geom_blank(data=custom_scales,inherit.aes=FALSE,aes(x=x,y=y)) +
   theme_wl() +
   scale_fill_manual(values = labels_colours$sector_lv2_colours) +
   ylab("GHG Emissions (MtCO2e/year)") +
@@ -378,6 +493,12 @@ p2 <- labels_colours %>%  ggplot(.,aes(y=rev(sector_lv2_order),label=sector_lv2)
 
 p1 + (plot_spacer() / p2 / plot_spacer() + plot_layout(heights=c(2,3,2))) + plot_layout(widths=c(6,2))
 
+
+blarg <- data_countries_crfs %>% 
+  filter(iso %in% c("USA","EU27","RUS"))
+blarg <- spread(blarg,year,value)
+write.xlsx(blarg,"blarg.xlsx")
+
 ```
 
 ```{r data_tables}
@@ -393,12 +514,10 @@ high_emitters <- data_ghg %>%
   mutate(rank=cumsum(rank)) %>% 
   select(iso,rank)
 
-
 data_table_countries <- left_join(data_ghg,high_emitters)
 
 data_table_countries <- data_table_countries %>% 
   filter(year>=1990) %>% 
-  mutate(value=ifelse(year==2022 & sector_lv2=="AFOLU: LULUCF",NA,value)) %>% 
   group_by(iso,country,rank,sector_lv1,sector_lv2,sector_lv2_order,year) %>%
   summarise(value=sum(value,na.rm=TRUE)/1e6)
 
@@ -414,6 +533,7 @@ data_table_countries$sector_lv2 <- as.factor(data_table_countries$sector_lv2)
 data_table_countries$sector_lv2 <- fct_reorder(data_table_countries$sector_lv2,data_table_countries$sector_lv2_order)
 
 data_table_countries <- spread(data_table_countries,year,value) %>% 
+  filter(!is.na(rank)) %>% 
   arrange(rank)
 
 data_table_countries <- data_table_countries %>% 
@@ -421,8 +541,6 @@ data_table_countries <- data_table_countries %>%
   mutate(change_2022_2023_rel=change_2022_2023_abs/`2022`)
 
 
-
-wb <- createWorkbook()
 pct = createStyle(numFmt="0%")
 options("openxlsx.numFmt" = "0.00")
 addWorksheet(wb,"total_by_country")
@@ -432,6 +550,8 @@ addStyle(wb, "total_by_country",style=pct,
          cols=length(data_table_countries),
          rows=2:length(data_table_countries$iso),
          gridExpand=TRUE)
+
+
 
 ```
 
@@ -454,7 +574,7 @@ data_indicators <- data_indicators %>%
 
 ## Population data from the World Bank
 
-data_wdi_pop<-WDI(country = "all",indicator = "SP.POP.TOTL",start = 1970,end = 2023,extra=TRUE,language = "en")%>%
+data_wdi_pop<-WDI(country = "all",indicator = "SP.POP.TOTL",start = 1970,end = 2023,extra=TRUE,language = "en") %>%
   select(iso3c, country, year, SP.POP.TOTL) %>%
   filter(!is.na(iso3c))
 
@@ -504,10 +624,6 @@ data_indicators <- rbind(data_indicators %>% filter(iso!="EU27"),spread(data_ind
 
 ## African Union
 
-cc_AU <- read.xlsx("sources/cc_African_Union.xlsx") %>% 
-  select(iso) %>% 
-  mutate(AU="1")
-
 data_indicators_au <- left_join(data_indicators,cc_AU,by="iso") %>%
   filter(!is.na(AU)) %>%
   mutate(iso=AU) %>%
@@ -517,7 +633,7 @@ data_indicators_au <- gather(data_indicators_au,var,value,-iso,-country) %>%
   summarise(value=sum(value,na.rm=TRUE)) %>%
   mutate(country="African Union") %>% 
   mutate(iso="AU55")
-data_indicators <- rbind(data_indicators,spread(data_indicators_au,var,value))
+data_indicators <- rbind(data_indicators %>% filter(iso!="AU55"),spread(data_indicators_au,var,value))
 
 
 ## Least Developed Countries
@@ -534,18 +650,17 @@ data_indicators_ldc <- gather(data_indicators_ldc,var,value,-iso,-country) %>%
 data_indicators <- rbind(data_indicators,spread(data_indicators_ldc,var,value))
 
 
-## G20
+## G20 (but without AU)
 
-data_indicators_g20 <- left_join(data_indicators,cc_G20 %>% add_row(iso="AU55",G20="1"),by="iso") %>%
+data_indicators_g20 <- left_join(data_indicators,cc_G20,by="iso") %>%
   filter(!is.na(G20)) %>%
   mutate(iso="G20") %>%
-  select(-G20) %>% 
-  filter(!country %in% c("Germany","France","Italy"))
+  select(-G20)
 data_indicators_g20 <- gather(data_indicators_g20,var,value,-iso,-country) %>%
   group_by(iso,var) %>%
   summarise(value=sum(value,na.rm=TRUE)) %>%
   mutate(country="G20")
-data_indicators <- rbind(data_indicators,spread(data_indicators_g20,var,value))
+data_indicators <- rbind(data_indicators %>% filter(iso!="G20"),spread(data_indicators_g20,var,value))
 
 
 #### Calculate indicators and tidy up
@@ -561,7 +676,7 @@ data_indicators <- data_indicators %>%
   mutate(ghg_per_capita=signif(ghg_per_capita,2))
 
 data_ghg_total <- data_ghg %>% 
-  filter(iso!="EU27") %>% 
+  filter(iso=="WLD") %>% 
   filter(sector_lv2!="AFOLU: LULUCF") %>% 
   filter(year==2023) %>% 
   group_by(iso) %>% 
@@ -580,7 +695,7 @@ data_historic_total <- sum(data_gcb_co2_ffi$value[data_gcb_co2_ffi$country=="Wor
 data_indicators <- data_indicators %>% 
   mutate(co2_historic_total = data_historic_total) %>% 
   mutate(co2_historic_fraction = co2_historic/co2_historic_total) %>%  
-  mutate(co2_historic_fraction=signif(co2_historic_fraction*100,2)) %>% 
+  mutate(co2_historic_fraction=round(co2_historic_fraction*100,0)) %>% 
   mutate(co2_historic = signif(co2_historic,3)) %>% 
   mutate(co2_historic_stat = paste0(co2_historic," (",co2_historic_fraction,")"))
 
@@ -605,7 +720,6 @@ data_indicators_table <- data_indicators_table %>%
   rename(`Historic CO2 emissions, 1850-2023`=co2_historic_stat)
 
 
-
 data_indicators_table <- data_indicators_table %>% 
   filter(iso %in% c("CHN","USA","IND","EU27","RUS","BRA","AU55","LDC","G20"))
 
@@ -617,6 +731,11 @@ data_indicators_table <- data_indicators_table %>%
 
 addWorksheet(wb,"table_2")
 writeData(wb, sheet = "table_2", data_indicators_table, colNames = T, rowNames = F)
+
+addWorksheet(wb,"aggregations")
+writeData(wb, sheet = "aggregations", cc_aggregates, colNames = T, rowNames = F)
+
+
 
 
 saveWorkbook(wb,paste0("results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx"),overwrite=T)
@@ -673,7 +792,7 @@ data_tropical <- data_tropical %>%
 ## global per capita ghg emissions
 
 data_percap <- data_ghg %>% 
-  filter(iso!="EU27") %>% 
+  filter(iso=="WLD") %>% 
   filter(sector_lv2!="AFOLU: LULUCF") %>% 
   group_by(year) %>% 
   summarise(value=sum(value,na.rm=TRUE))
@@ -681,6 +800,33 @@ data_percap <- data_ghg %>%
 data_percap <- left_join(data_percap,data_wdi_pop %>% filter(country=="World") %>% select(year,population))
 data_percap <- data_percap %>% 
   mutate(value_pc=value/population)
+
+
+## share of top 6 in global emissions
+
+data_top <- data_ghg %>% 
+  filter(iso %in% c("CHN","USA","EU27","IND","RUS","BRA")) %>% 
+  group_by(year) %>% 
+  summarise(value=sum(value))
+data_top <- left_join(data_top,data_ghg %>% filter(iso=="WLD") %>% group_by(year) %>% summarise(value_world=sum(value)))
+data_top <- data_top %>% 
+  mutate(fraction=value/value_world)
+
+## population share of top emitters
+data_pop <- data_indicators %>% 
+  filter(iso %in% c("CHN","USA","EU27","IND","RUS","BRA","LDC","AU55")) %>% 
+  select(iso,country,population) %>% 
+  mutate(year=2023)
+data_pop <- left_join(data_pop,data_wdi_pop %>% filter(country=="World") %>% select(year,pop_world=population))
+data_pop <- data_pop %>% 
+  mutate(fraction=population/pop_world) %>% 
+  mutate(fraction=fraction*100) %>% 
+  mutate(fraction=round(fraction,0))
+
+
+
+
+
 ```
 
 
@@ -692,7 +838,7 @@ pull_out_year=2021
 
 plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out_year) {
 
-  data_countries <- blarg %>%
+  data_countries <- data_ghg %>%
     filter(iso==country_iso) %>%
     filter(year>=1990) %>%
     group_by(iso,country,sector_lv2,sector_lv2_colours,sector_lv2_order,sector_lv2_icons,year) %>%
@@ -872,7 +1018,6 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
 ```{r country_test, fig.width=9,fig.height=4,echo=FALSE,warning=FALSE}
 
 
-
 plot_country("BRA",data_ghg,data_crfs,data_indicators,2021)
 plot_country("DEU",data_ghg,data_crfs,data_indicators,2021)
 plot_country("AIA",data_ghg,data_crfs,data_indicators,2021)
@@ -886,29 +1031,29 @@ plot_country("LBR",data_ghg,data_crfs,data_indicators,2021)
 
 ## only plot countries with EDGAR data and pop data 
 
-countries <- data_ghg %>% 
-  ungroup() %>% 
-  filter(year==2020) %>% 
-  filter(sector_lv2!="AFOLU: LULUCF") %>% 
-  select(iso,country) %>% 
-  distinct()
-
-countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
-countries <- countries %>% 
-  mutate(population=ifelse(iso=="AIR",1,population)) %>% 
-  mutate(population=ifelse(iso=="SEA",1,population)) %>% 
-  mutate(population=ifelse(iso=="EU27",1,population)) %>% 
-  filter(!is.na(population)) %>% 
-  select(iso,country)
-
-
-for (i in 1:length(countries$iso)) {
-
-  ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2021),filename = paste0(countries$country[i],".png"),path = "results/countries",device = "png",height = 4,width=9,dpi=300)
-  ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2021),filename = paste0(countries$country[i],".pdf"),path = "results/countries",device = "pdf",height = 4,width=9)
-
-
-}
+# countries <- data_ghg %>%
+#   ungroup() %>%
+#   filter(year==2020) %>%
+#   filter(sector_lv2!="AFOLU: LULUCF") %>%
+#   select(iso,country) %>%
+#   distinct()
+# 
+# countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
+# countries <- countries %>%
+#   mutate(population=ifelse(iso=="AIR",1,population)) %>%
+#   mutate(population=ifelse(iso=="SEA",1,population)) %>%
+#   mutate(population=ifelse(iso=="EU27",1,population)) %>%
+#   filter(!is.na(population)) %>%
+#   select(iso,country)
+# 
+# 
+# for (i in 1:length(countries$iso)) {
+# 
+#   ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2021),filename = paste0(countries$country[i],".png"),path = "results/countries",device = "png",height = 4,width=9,dpi=300)
+#   ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2021),filename = paste0(countries$country[i],".pdf"),path = "results/countries",device = "pdf",height = 4,width=9)
+# 
+# 
+# }
 
 
 # blarg <- left_join(data_ghg,cc_AU,by="iso") %>%

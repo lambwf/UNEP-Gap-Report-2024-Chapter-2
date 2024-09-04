@@ -29,8 +29,6 @@
 "0","  group_by(country,sector,product,year) %>%"
 "0","  summarise(value=sum(value,na.rm=T)) %>% "
 "0","  arrange(country,sector,product)"
-"1","[38;5;232m`summarise()` has grouped output by 'country', 'sector', 'product'. You can override using the `.groups` argument.[39m
-"
 "0","  "
 "0","write.xlsx(wd_iea %>% "
 "0","  filter(country==""World"") %>% "
@@ -46,8 +44,8 @@
 "0","  mutate(units=""EJ"") %>% "
 "0","  group_by(country,sector,category,units,year) %>% "
 "0","  summarise(value=sum(value)/1e6)"
-"1","[38;5;232m`summarise()` has grouped output by 'country', 'sector', 'category', 'units'. You can override using the `.groups` argument.[39m
-"
+"0",""
+"0",""
 "0","blarg <- wd_iea %>% "
 "0","  filter(country==""World"") %>% "
 "0","  filter(year==2022)"
