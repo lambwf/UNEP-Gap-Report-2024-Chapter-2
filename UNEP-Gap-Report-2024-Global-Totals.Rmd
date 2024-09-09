@@ -36,38 +36,47 @@ source("https://raw.githubusercontent.com/lambwf/Codebase/main/growth_rate.R")
 
 ```{r load_data}
 
-## load EDGAR data (https://edgar.jrc.ec.europa.eu/dataset_ghg80)
+#### Load and organise EDGAR data
 
-edgar_co2 <- read.xlsx("sources/not public/EDGAR_2024_CO2_1970_2023_v2.xlsx",sheet=2,startRow=9)
-edgar_ch4 <- read.xlsx("sources/not public/EDGAR_2024_CH4_1970_2023_v2.xlsx",sheet=2,startRow = 9)
-edgar_n2o <- read.xlsx("sources/not public/EDGAR_2024_N2O_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+# Load EDGAR data (https://edgar.jrc.ec.europa.eu/dataset_ghg80)
+
+edgar_co2  <- read.xlsx("sources/not public/EDGAR_2024_CO2_1970_2023_v2.xlsx",sheet=2,startRow=9)
+edgar_ch4  <- read.xlsx("sources/not public/EDGAR_2024_CH4_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+edgar_n2o  <- read.xlsx("sources/not public/EDGAR_2024_N2O_1970_2023_v2.xlsx",sheet=2,startRow = 9)
 edgar_fgas <- read.xlsx("sources/not public/EDGAR_2024_F-gases_1970_2023_v2.xlsx",sheet=2,startRow = 9)
-data_ghg <- load_edgar(edgar_co2,edgar_ch4,edgar_n2o,edgar_fgas)
+data_ghg   <- load_edgar(edgar_co2,edgar_ch4,edgar_n2o,edgar_fgas)
 
 
-## join GWPs and calculate CO2e
+# Remove biogenic CO2 as these emissions are normally accounted in equilibrium with removals
+
+data_ghg <- data_ghg %>% filter(gas!="CO2bio")
+
+
+# Load global warming potentials (GWPs) to calculate CO2e for each gas
 
 gwps <- read.csv("https://raw.githubusercontent.com/openclimatedata/globalwarmingpotentials/main/globalwarmingpotentials.csv",skip = 10)
-gwps <- gwps %>% 
-  select(gas=Species,gwp100=AR6GWP100)
+gwps <- gwps %>% select(gas=Species,gwp100=AR6GWP100)
+
+
+# Join GWPs
 
 data_ghg$gas <- gsub("-","",data_ghg$gas)
 data_ghg <- left_join(data_ghg,gwps) %>% 
   mutate(gwp100=ifelse(gas=="CO2",1,gwp100))
 
-## remove biogenic CO2
 
-data_ghg <- data_ghg %>% 
-  filter(gas!="CO2bio")
-
-
-## check all gwps joined
+# Check that all gwps joined
 
 check <- data_ghg %>% filter(is.na(gwp100))
 check <- data_ghg %>% select(gas,gwp100) %>% distinct()
 
+
+# Calculate CO2e for each gas
+
 data_ghg <- data_ghg %>% mutate(value_gwp=value*gwp100)
 
+
+# Create list of individual f-gases to merge these into a single gas variable
 
 list_fgases <- data_ghg %>% 
   select(gas) %>% 
@@ -77,37 +86,42 @@ list_fgases <- data_ghg %>%
   mutate(group=ifelse(gas=="N2O","N2O",group)) %>% 
   mutate(group=ifelse(is.na(group),"F-gases",group))
 
+
+# Group f-gases into a single variable
+
 data_ghg <- left_join(data_ghg,list_fgases,by="gas")
 data_ghg <- data_ghg %>% 
   mutate(gas=group) %>% 
   group_by(iso,country,code,code_description,gas,year) %>% 
   summarise(value=sum(value_gwp,na.rm=TRUE))
 
-## Gg to tons
+
+# Convert Gg to tons
 
 data_ghg$value = data_ghg$value*1000
 
 
-## aggregate totals
+# Sum up emissions to sector and year
 
 data_ghg <- data_ghg %>% 
   group_by(code,code_description,gas,year) %>% 
   summarise(value=sum(value,na.rm=TRUE))
 
 
-## check global totals
+# Check global totals
 
 check <- data_ghg %>% filter(year==2023) %>% group_by(gas) %>% summarise(value=sum(value,na.rm=T))
 sum(check$value)
 
 
-## Load Global Carbon Project CO2 LUC (https://globalcarbonbudget.org/carbonbudget2023/)
+#### Join additional global data
+
+# Load Global Carbon Budget (GCB) CO2 land use change (LUC) emissions (https://globalcarbonbudget.org/carbonbudget2023/)
 
 data_gcb_co2_luc <- load_gcb_countries_luc(
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=2),
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=3),
-  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4)
-)
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4))
 
 data_gcb_co2_luc <- data_gcb_co2_luc %>% 
   filter(year>=1970) %>% 
@@ -116,7 +130,8 @@ data_gcb_co2_luc <- data_gcb_co2_luc %>%
   mutate(year=as.numeric(year)) %>% 
   mutate(value=value*1e9)
 
-# add GCB projection (https://essd.copernicus.org/articles/15/5301/2023/)
+
+# Add the GCB projection for 2023 (https://essd.copernicus.org/articles/15/5301/2023/) and join
 
 data_gcb_co2_luc <- data_gcb_co2_luc %>% 
   add_row(year=2023,value=1.1*(44/12)*1e9)
@@ -128,7 +143,8 @@ data_gcb_co2_luc <- data_gcb_co2_luc %>%
 
 data_ghg <- rbind(data_ghg,data_gcb_co2_luc)
 
-## Add cement carbonation https://globalcarbonbudget.org/carbonbudget2023/
+
+# Add cement carbonation from GCB (https://globalcarbonbudget.org/carbonbudget2023/)
 
 data_gcb_co2_cc <- read.xlsx('sources/Global_Carbon_Budget_2023v1.1.xlsx',sheet=2,startRow = 22,cols=c(1,7))
 data_gcb_co2_cc <- data_gcb_co2_cc %>% 
@@ -140,13 +156,16 @@ data_gcb_co2_cc <- data_gcb_co2_cc %>%
 
 data_ghg <- rbind(data_ghg,data_gcb_co2_cc)
 
-## GFED CH4 data (https://www.geo.vu.nl/~gwerf/GFED/GFED4/tables/GFED4.1s_CH4.txt)
 
-data_gfed_ch4 <- read.xlsx("sources/GFED4.1s_2024.xlsx",sheet="GFED_CH4",rows = c(14,105,122))    ## as in GCB, only use global tropical & SE Asia peat fires
+# Load global fire emissions (GFED) CH4 data (https://www.geo.vu.nl/~gwerf/GFED/GFED4/tables/GFED4.1s_CH4.txt)
+# Following GCB convention, only use global tropical fires and SE Asia peat fires
+
+data_gfed_ch4 <- read.xlsx("sources/GFED4.1s_2024.xlsx",sheet="GFED_CH4",rows = c(14,105,122))    
 data_gfed_ch4 <- gather(data_gfed_ch4,year,value,`1997`:`2023`)
 data_gfed_ch4 <- data_gfed_ch4 %>%                  
   group_by(year) %>% 
   summarise(value=sum(value))
+
 data_gfed_ch4 <- data_gfed_ch4 %>% 
   mutate(var="CH4") %>% 
   select(year,var,value) %>% 
@@ -158,13 +177,15 @@ data_gfed_ch4 <- data_gfed_ch4 %>%
   select(year,value,source,var,units)
 
 
-## GFED N2O data (https://www.geo.vu.nl/~gwerf/GFED/GFED4/tables/GFED4.1s_N2O.txt)
+# Load global fire emissions (GFED) N2O data (https://www.geo.vu.nl/~gwerf/GFED/GFED4/tables/GFED4.1s_N2O.txt)
+# Following GCB convention, only use global tropical fires and SE Asia peat fires
 
-data_gfed_n2o <- read.xlsx("sources/GFED4.1s_2024.xlsx",sheet="GFED_N2O",rows = c(14,105,122))    ## as in GCB, only use global tropical & SE Asia peat fires
+data_gfed_n2o <- read.xlsx("sources/GFED4.1s_2024.xlsx",sheet="GFED_N2O",rows = c(14,105,122))
 data_gfed_n2o <- gather(data_gfed_n2o,year,value,`1997`:`2023`)
 data_gfed_n2o <- data_gfed_n2o %>%                  
   group_by(year) %>% 
   summarise(value=sum(value))
+
 data_gfed_n2o <- data_gfed_n2o %>% 
   mutate(var="N2O") %>% 
   mutate(value=value*1E9) %>% #1e9 grams to grams
@@ -174,7 +195,10 @@ data_gfed_n2o <- data_gfed_n2o %>%
   mutate(units="MtN2O") %>% 
   select(year,value,source,var,units)
 
-## GFED extention to before 1997 using CMIP6 (https://github.com/openclimatedata/global-biomass-burning-emissions/blob/main/data/gbbe-extended.csv)
+
+# Extend GFED to before 1997 using CMIP6 input data 
+# (https://github.com/openclimatedata/global-biomass-burning-emissions/blob/main/data/gbbe-extended.csv)
+# (Not possible because CMIP6 doesn't dissaggregate by source or region)
 
 # data_gfed_extension <- read.csv("https://raw.githubusercontent.com/openclimatedata/global-biomass-burning-emissions/main/data/gbbe-extended.csv")
 # data_gfed_extension <- data_gfed_extension %>% 
@@ -198,7 +222,9 @@ data_gfed_n2o <- data_gfed_n2o %>%
 #   arrange(year) %>% 
 #   mutate(value=ifelse(year<1997,N2O,value)) %>% 
 #   select(-N2O)
-# 
+ 
+
+# Join GFED CH4 and N2O to data frame
 
 data_gfed <- rbind(data_gfed_ch4,data_gfed_n2o)
 data_gfed <- left_join(data_gfed,gwps,by=c("var"="gas"))
@@ -212,14 +238,18 @@ data_gfed <- data_gfed %>%
   mutate(code_description="Fires") %>%
   mutate(year=as.numeric(year))
 
-
 data_ghg <- rbind(data_ghg,data_gfed)
 
 
-## aggregate sectors
+#### Aggregate sectors and set factor levels
+
+# Aggregate sectors based on own excel file
 
 write.xlsx(data_ghg %>% ungroup() %>% select(code,code_description) %>% distinct() %>% arrange(code),"cc_sectors.xlsx")
 data_ghg <- left_join(data_ghg,read.xlsx("sources/cc_sectors.xlsx"),by=join_by(code, code_description))
+
+
+# Set factor order based on own excel file
 
 data_ghg$gas <- as.factor(data_ghg$gas)
 data_ghg$gas <- fct_relevel(data_ghg$gas,"CO2 Fossil","CO2 LULUCF","CH4","N2O","F-gases")
@@ -236,12 +266,11 @@ data_ghg$sector_lv3 <- fct_reorder(data_ghg$sector_lv3,data_ghg$sector_lv3_order
 
 ```
 
-## Figure global gases
-
+## Plot a figure showing global emissions by gas
 
 ``` {r figure_global_gases,fig.width=8,fig.height=4, fig.path="results/",dev=c('png','pdf')}
 
-## GHG emissions trend plot
+# Calculate total emissions by gas and year
 
 plot_ghgs <- data_ghg %>% 
   #filter(code_description!="Cement carbonation") %>% 
@@ -249,27 +278,42 @@ plot_ghgs <- data_ghg %>%
   group_by(gas,year) %>%
   summarise(value=sum(value,na.rm=TRUE)/1e9)
 
+
+# Calculate total emissions by year
+
 plot_ghgs_totals <- plot_ghgs %>% 
   group_by(year) %>% 
   summarise(totals=sum(value))
-  
+
+
+# Make variable to display vertical lines and totals each decade
+
 line_data <- data.frame(x=c(1990,1990,2000,2000,2010,2010,2020,2020,2023,2023),y=c(0,60))
 
 
+# Plot
+
 plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
+  
   geom_area(color="#636363") +
-  geom_line(inherit.aes = FALSE,data=line_data,aes(x=x,y=y,group=x),alpha=0.3,linetype="dashed") +
-  geom_text(inherit.aes = FALSE, data=plot_ghgs_totals %>% filter(year %in% c(1990,2000,2010,2020,2023)),aes(x=year,y=63,label=paste(signif(totals,3))),
-           size=3.5,colour="#252525") +
-  theme_wl() +
+  geom_line(inherit.aes = FALSE,
+            data=line_data,aes(x=x,y=y,group=x),
+            alpha=0.3,linetype="dashed") +
+  geom_text(inherit.aes = FALSE,
+            data=plot_ghgs_totals %>% filter(year %in% c(1990,2000,2010,2020,2023)),
+            aes(x=year,y=63,label=paste(signif(totals,3))),
+            size=3.5,colour="#252525") +
+  
   ylab("GHG Emissions (GtCO2e/year)") +
   scale_fill_manual(values=c("#e78ac3","#fc8d62","#8da0cb","#66c2a5","#a6d854")) +
   scale_x_continuous(breaks=c(1990,2000,2010,2020,2023)) +
+  
+  theme_wl() +
   theme(axis.title.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        panel.border = element_blank(),
         axis.line.x=element_line(colour='#636363'),
         axis.line.y=element_line(colour='#636363'),
+        panel.grid.major.x = element_blank(),
+        panel.border = element_blank(),
         legend.position = "right",
         legend.title = element_blank())
 
