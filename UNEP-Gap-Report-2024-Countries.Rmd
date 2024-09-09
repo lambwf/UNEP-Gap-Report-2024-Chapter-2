@@ -1019,7 +1019,7 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
   
   
   p <-  wrap_elements(p1 + p2 + plot_layout(widths=c(7,1))) + plot_spacer() +
-    wrap_elements(plot_spacer() / p3 / plot_spacer() + plot_layout(heights=c(0.5,10,ifelse(is_crf=="T",1.75,1))) & theme(plot.backgroun=element_blank())) + 
+    wrap_elements(plot_spacer() / p3 / plot_spacer() + plot_layout(heights=c(0.5,10,ifelse(is_crf=="T",1.75,1))) & theme(plot.background=element_blank())) + 
     plot_layout(widths=c(6,-0.25,3.8))
   
   p
@@ -1052,29 +1052,30 @@ plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
 
 ## only plot countries with EDGAR data and pop data 
 
-# countries <- data_ghg %>%
-#   ungroup() %>%
-#   filter(year==2020) %>%
-#   filter(sector_lv2!="AFOLU: LULUCF") %>%
-#   select(iso,country) %>%
-#   distinct()
-# 
-# countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
-# countries <- countries %>%
-#   mutate(population=ifelse(iso=="AIR",1,population)) %>%
-#   mutate(population=ifelse(iso=="SEA",1,population)) %>%
-#   mutate(population=ifelse(iso=="EU27",1,population)) %>%
-#   filter(!is.na(population)) %>%
-#   select(iso,country)
-# 
-# 
-# for (i in 1:length(countries$iso)) {
-# 
-#   ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries",device = "png",height = 4,width=9,dpi=300)
-#   ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".pdf"),path = "results/countries",device = "pdf",height = 4,width=9)
-# 
-# 
-# }
+countries <- data_ghg %>%
+  ungroup() %>%
+  filter(year==2020) %>%
+  filter(sector_lv2!="AFOLU: LULUCF") %>%
+  select(iso,country) %>%
+  distinct()
+
+countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
+countries <- countries %>%
+  mutate(population=ifelse(iso=="AIR",1,population)) %>%
+  mutate(population=ifelse(iso=="SEA",1,population)) %>%
+  mutate(population=ifelse(iso=="EU27",1,population)) %>%
+  filter(!is.na(population)) %>%
+  select(iso,country)
+
+
+for (i in 1:length(countries$iso)) {
+
+  #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=9,dpi=300)
+  ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/lowres/",device = "png",height = 4,width=9,dpi=150)
+  #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=9)
+
+
+}
 
 
 # blarg <- left_join(data_ghg,cc_AU,by="iso") %>%

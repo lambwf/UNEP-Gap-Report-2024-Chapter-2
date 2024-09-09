@@ -152,7 +152,7 @@ All countries
 
 ```{r all_countries, echo = FALSE, eval = TRUE,results='asis'}
 
-filenames <- list.files("results/countries", pattern="*.png", full.names=TRUE)
+filenames <- list.files("results/countries/lowres/", pattern="*.png", full.names=TRUE)
 #filenames <- filenames[1:4]
 
 out <- lapply(seq_along(filenames), function(i) {
@@ -161,7 +161,7 @@ out <- lapply(seq_along(filenames), function(i) {
   a1 <- knitr::knit_expand(text = "### \n")
   
   # Start R chunk
-  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='100%'} \n")
+  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='60%'} \n")
   
   # Render figure
   a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
