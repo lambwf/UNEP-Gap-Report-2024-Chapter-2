@@ -86,8 +86,8 @@ Top emitters
 
 ```{r top_emitters, echo = FALSE, eval = TRUE,results='asis'}
 
-filenames <- c("results/countries/United States.png",
-               "results/countries/China.png",
+filenames <- c("results/countries/China.png",
+               "results/countries/United States.png",
                "results/countries/India.png",
                "results/countries/European Union.png",
                "results/countries/Russia.png",
@@ -161,7 +161,7 @@ out <- lapply(seq_along(filenames), function(i) {
   a1 <- knitr::knit_expand(text = "### \n")
   
   # Start R chunk
-  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='60%'} \n")
+  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='100%'} \n")
   
   # Render figure
   a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
