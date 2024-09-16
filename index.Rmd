@@ -57,9 +57,9 @@ include_graphics("results/figure_global_gases-1.png")
 ```{r total_links,results = 'asis'}
 
 cat("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links: ")
-cat("<a href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
-    <a href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_gases-1.png'>png</a>|
-    <a href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_gases-1.pdf'>pdf</a>")
+cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
+    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_gases-1.png'>png</a>|
+    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_gases-1.pdf'>pdf</a>")
 ```
 
 
@@ -74,9 +74,9 @@ include_graphics("results/figure_global_sector_shares-1.png")
 ```{r sector_links,results = 'asis'}
 
 cat("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links: ")
-cat("<a href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
-    <a href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_sector_shares-1.png'>png</a>|
-    <a href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_sector_shares-1.pdf'>pdf</a>")
+cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
+    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_sector_shares-1.png'>png</a>|
+    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_sector_shares-1.pdf'>pdf</a>")
 
 ```
 
@@ -114,13 +114,13 @@ out <- lapply(seq_along(filenames), function(i) {
   # Include links to figure and data
   country <- sub(".*/(.*)\\.png", "\\1", filenames[i])
   
-  link_1 <- "<a href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
+  link_1 <- "<a target=\"_blank\" href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
   
   link_2 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".png")
-  link_2 <- paste0("<a href=","\"",link_2,"\"",">png</a>")
+  link_2 <- paste0("<a target=\"_blank\" href=","\"",link_2,"\"",">png</a>")
 
   link_3 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".pdf")
-  link_3 <- paste0("<a href=","\"",link_3,"\"",">pdf</a>")
+  link_3 <- paste0("<a target=\"_blank\" href=","\"",link_3,"\"",">pdf</a>")
 
   # Write text
   a6  <- knitr::knit_expand(text = paste0("cat('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;','",country,": ')"))
@@ -176,13 +176,13 @@ out <- lapply(seq_along(filenames), function(i) {
   # Include links to figure and data
   country <- sub(".*/(.*)\\.png", "\\1", filenames[i])
   
-  link_1 <- "<a href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
+  link_1 <- "<a target=\"_blank\" href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
   
   link_2 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".png")
-  link_2 <- paste0("<a href=","\"",link_2,"\"",">png</a>")
+  link_2 <- paste0("<a target=\"_blank\" href=","\"",link_2,"\"",">png</a>")
 
   link_3 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".pdf")
-  link_3 <- paste0("<a href=","\"",link_3,"\"",">pdf</a>")
+  link_3 <- paste0("<a target=\"_blank\" href=","\"",link_3,"\"",">pdf</a>")
 
   
   # Write text

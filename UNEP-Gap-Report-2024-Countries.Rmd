@@ -162,6 +162,95 @@ data_ghg <- data_ghg %>%
 
 ```
 
+
+```{r figure_changes_by_country,fig.width=7,fig.height=4,fig.path="results/",dev=c('png','pdf')}
+
+
+data_changes <- data_ghg %>%
+  filter(iso!="WLD") %>% 
+  filter(sector_lv2!="AFOLU: LULUCF") %>% 
+  filter(year >= 2000)
+
+
+## aggregate EU
+
+cc_EU <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/european-union.csv") %>% 
+  select(iso=Code) %>% 
+  mutate(EU="1")
+
+data_changes_eu <- left_join(data_changes,cc_EU,by="iso") %>%
+  filter(!is.na(EU)) %>% 
+  mutate(iso="EU27") %>% 
+  select(-EU) %>%
+  mutate(country="European Union") %>% 
+  group_by(across(c(-value))) %>% 
+  summarise(value=sum(value,na.rm=T))
+
+data_changes_eu <- rbind(data_changes_eu,data_ghg %>% 
+                       filter(iso=="EUR") %>% 
+                       filter(sector_lv2=="AFOLU: LULUCF") %>% 
+                       mutate(iso="EU27") %>% 
+                       mutate(country="European Union"))
+
+data_changes <- rbind(data_changes %>% filter(iso!="EUR"),data_changes_eu)
+data_changes <- left_join(data_changes,cc_EU,by="iso") %>%
+  filter(is.na(EU))
+
+
+
+data_changes <- data_changes %>%
+  group_by(country,year) %>%
+  summarise(value = sum(value) / 1e9) %>% 
+  mutate(change_abs=NA) %>% 
+  filter(!is.na(country))
+
+countries <- unique(data_changes$country)
+
+
+for (j in 1:length(countries)) {
+  for (i in 2001:2023) {
+    data_changes$change_abs[data_changes$year == i & data_changes$country == countries[j]] <-
+      data_changes$value[data_changes$year == i & data_changes$country == countries[j]] -
+      data_changes$value[data_changes$year == i - 1 & data_changes$country == countries[j]]
+    
+  }
+}
+
+
+blarg <- data_changes %>% 
+  filter(year==2023) %>% 
+  mutate(biggest_changes=abs(change_abs)) %>% 
+  arrange(desc(biggest_changes)) %>% 
+  head(7) %>% 
+  mutate(include=1) %>% 
+  select(country,include)
+
+data_changes <- left_join(data_changes,blarg)
+data_changes <- data_changes %>% 
+  mutate(country=ifelse(is.na(include),"Rest",country)) %>% 
+  group_by(country,year) %>% 
+  summarise(value=sum(value),change_abs=sum(change_abs))
+  
+
+data_changes %>% 
+  filter(year>=2010) %>% 
+  mutate(year=as.factor(year)) %>% 
+  ggplot(.,aes(x=year,y=change_abs)) +
+  geom_col(color="#636363",fill="white") +
+  geom_hline(yintercept=0) +
+  geom_point(data=data_changes %>% filter(year>=2010) %>% mutate(year=as.factor(year)) %>%  group_by(year) %>% summarise(change_abs=sum(change_abs)),
+             inherit.aes=FALSE,aes(x=year,y=change_abs)) +
+  theme_wl() +
+  labs(title="Change in total emissions by year and country",
+       subtitle="GtCO2e") +
+  theme(axis.title = element_blank(),
+        legend.title = element_blank())
+
+
+
+```
+
+
 ``` {r aggregates}
 
 ## aggregate EU
@@ -395,7 +484,7 @@ writeData(wb, sheet = "data_comparison", data_countries, colNames = T, rowNames 
 
 ```
 
-```{r plot_high_emitters,fig.height=8,fig.width=10,fig.path="results/",dev=c('png','pdf')}
+```{r figure_high_emitters,fig.height=8,fig.width=10,fig.path="results/",dev=c('png','pdf')}
 
 high_emitters <- data_ghg %>% 
   filter(year==2023) %>% 
@@ -1048,34 +1137,36 @@ plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
 
 ```
 
+
+
 ```{r plots, fig.width=9,fig.height=4,echo=FALSE}
 
 ## only plot countries with EDGAR data and pop data 
 
-countries <- data_ghg %>%
-  ungroup() %>%
-  filter(year==2020) %>%
-  filter(sector_lv2!="AFOLU: LULUCF") %>%
-  select(iso,country) %>%
-  distinct()
-
-countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
-countries <- countries %>%
-  mutate(population=ifelse(iso=="AIR",1,population)) %>%
-  mutate(population=ifelse(iso=="SEA",1,population)) %>%
-  mutate(population=ifelse(iso=="EU27",1,population)) %>%
-  filter(!is.na(population)) %>%
-  select(iso,country)
-
-
-for (i in 1:length(countries$iso)) {
-
-  #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=9,dpi=300)
-  ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/lowres/",device = "png",height = 4,width=9,dpi=150)
-  #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=9)
-
-
-}
+# countries <- data_ghg %>%
+#   ungroup() %>%
+#   filter(year==2020) %>%
+#   filter(sector_lv2!="AFOLU: LULUCF") %>%
+#   select(iso,country) %>%
+#   distinct()
+# 
+# countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
+# countries <- countries %>%
+#   mutate(population=ifelse(iso=="AIR",1,population)) %>%
+#   mutate(population=ifelse(iso=="SEA",1,population)) %>%
+#   mutate(population=ifelse(iso=="EU27",1,population)) %>%
+#   filter(!is.na(population)) %>%
+#   select(iso,country)
+# 
+# 
+# for (i in 1:length(countries$iso)) {
+# 
+#   #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=9,dpi=300)
+#   ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/lowres/",device = "png",height = 4,width=9,dpi=150)
+#   #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=9)
+# 
+# 
+# }
 
 
 # blarg <- left_join(data_ghg,cc_AU,by="iso") %>%
