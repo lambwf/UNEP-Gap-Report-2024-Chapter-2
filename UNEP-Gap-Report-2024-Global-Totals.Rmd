@@ -268,7 +268,7 @@ data_ghg$sector_lv3 <- fct_reorder(data_ghg$sector_lv3,data_ghg$sector_lv3_order
 
 ## Plot a figure showing global emissions by gas
 
-``` {r figure_global_gases,fig.width=8,fig.height=4, fig.path="results/",dev=c('png','pdf')}
+``` {r figure_global_gases,fig.width=8,fig.height=4, fig.path="results/",dev=c('png','pdf','svg')}
 
 # Calculate total emissions by gas and year
 
@@ -551,7 +551,7 @@ addStyle(wb, "total_by_sector",style=pct,
 
 ## Plot figure showing the share of global emissions in each sector
 
-``` {r figure_global_sector_shares,fig.height=7,fig.width=9,fig.path="results/",dev=c('png','pdf')}
+``` {r figure_global_sector_shares,fig.height=7,fig.width=9,fig.path="results/",dev=c('png','pdf','svg')}
 
 # Calculate emissions by sector (first level) in 2023
 

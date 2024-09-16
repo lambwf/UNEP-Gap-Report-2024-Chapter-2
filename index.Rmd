@@ -4,6 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: scroll
+    self_contained: no
     source_code: "https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2"
     theme:
       version: 4
@@ -29,6 +30,10 @@ html {
   color: red;
   font-size: 20px;
 
+img {
+    max-width: 100%;
+    max-height: 100%;
+}
 
 </style>
 
@@ -51,7 +56,7 @@ Global emissions
 
 ```{r total_figure,out.width="80%",fig.align = 'center',results='asis'}
 cat("<br>")
-include_graphics("results/figure_global_gases-1.png")
+include_graphics("results/figure_global_gases-1.svg")
 
 ```
 ```{r total_links,results = 'asis'}
@@ -68,7 +73,7 @@ cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-C
 
 ```{r sector_figure,out.width="80%",fig.align = 'center',results='asis'}
 cat("<br>")
-include_graphics("results/figure_global_sector_shares-1.png")
+include_graphics("results/figure_global_sector_shares-1.svg")
 
 ```
 ```{r sector_links,results = 'asis'}
@@ -86,12 +91,12 @@ Top emitters
 
 ```{r top_emitters, echo = FALSE, eval = TRUE,results='asis'}
 
-filenames <- c("results/countries/China.png",
-               "results/countries/United States.png",
-               "results/countries/India.png",
-               "results/countries/European Union.png",
-               "results/countries/Russia.png",
-               "results/countries/Brazil.png")
+filenames <- c("results/countries/China.svg",
+               "results/countries/United States.svg",
+               "results/countries/India.svg",
+               "results/countries/European Union.svg",
+               "results/countries/Russia.svg",
+               "results/countries/Brazil.svg")
 
 out <- lapply(seq_along(filenames), function(i) {
   
@@ -99,10 +104,12 @@ out <- lapply(seq_along(filenames), function(i) {
   a1 <- knitr::knit_expand(text = "### \n")
   
   # Start R chunk
-  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='100%'} \n")
+  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='80%',fig.align = 'center'} \n")
+  #a2 <- knitr::knit_expand(text = "\n```{r, results='asis'} \n")
   
   # Render figure
-  a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
+  #a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
+  a3  <- knitr::knit_expand(text = paste0("cat('<img src = \"",filenames[i],"\" alt=\"img\"/>')"))
   
   # End R chunk
   a4 <- knitr::knit_expand(text = "\n```\n")
@@ -112,7 +119,7 @@ out <- lapply(seq_along(filenames), function(i) {
   a5 <- knitr::knit_expand(text = "\n```{r, results='asis'} \n")
   
   # Include links to figure and data
-  country <- sub(".*/(.*)\\.png", "\\1", filenames[i])
+  country <- sub(".*/(.*)\\.svg", "\\1", filenames[i])
   
   link_1 <- "<a target=\"_blank\" href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
   
@@ -152,7 +159,7 @@ All countries
 
 ```{r all_countries, echo = FALSE, eval = TRUE,results='asis'}
 
-filenames <- list.files("results/countries/lowres/", pattern="*.png", full.names=TRUE)
+filenames <- list.files("results/countries/", pattern="*.svg", full.names=TRUE)
 #filenames <- filenames[1:4]
 
 out <- lapply(seq_along(filenames), function(i) {
@@ -161,10 +168,11 @@ out <- lapply(seq_along(filenames), function(i) {
   a1 <- knitr::knit_expand(text = "### \n")
   
   # Start R chunk
-  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='100%'} \n")
+  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='80%',fig.align = 'center'} \n")
   
   # Render figure
-  a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
+  #a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
+  a3  <- knitr::knit_expand(text = paste0("cat('<img src = \"",filenames[i],"\" alt=\"img\"/>' )"))
   
   # End R chunk
   a4 <- knitr::knit_expand(text = "\n```\n")
@@ -174,7 +182,7 @@ out <- lapply(seq_along(filenames), function(i) {
   a5 <- knitr::knit_expand(text = "\n```{r, results='asis'} \n")
   
   # Include links to figure and data
-  country <- sub(".*/(.*)\\.png", "\\1", filenames[i])
+  country <- sub(".*/(.*)\\.svg", "\\1", filenames[i])
   
   link_1 <- "<a target=\"_blank\" href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
   

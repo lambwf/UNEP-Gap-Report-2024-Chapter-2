@@ -953,16 +953,16 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
   }
   
   ## project missing LULUCF data
-  data_countries_lulucf <- spread(data_countries,year,value) 
-  data_countries_lulucf <- gather(data_countries_lulucf,year,value,`1990`:`2023`) %>% 
-    filter(sector_lv2=="AFOLU: LULUCF")
-  projection=2023-length(data_countries_lulucf$value[is.na(data_countries_lulucf$value)])
-  data_countries_lulucf <- data_countries_lulucf %>%
-    mutate(year=as.numeric(year)) %>% 
-    arrange(year) %>% 
-    na.locf()
-  data_countries <- rbind(data_countries %>% filter(sector_lv2!="AFOLU: LULUCF"),data_countries_lulucf)
-  data_countries <- data_countries %>% mutate(blarg=ifelse(sector_lv2=="AFOLU: LULUCF" & year>=projection,"0",NA))
+  # data_countries_lulucf <- spread(data_countries,year,value) 
+  # data_countries_lulucf <- gather(data_countries_lulucf,year,value,`1990`:`2023`) %>% 
+  #   filter(sector_lv2=="AFOLU: LULUCF")
+  # projection=2023-length(data_countries_lulucf$value[is.na(data_countries_lulucf$value)])
+  # data_countries_lulucf <- data_countries_lulucf %>%
+  #   mutate(year=as.numeric(year)) %>% 
+  #   arrange(year) %>% 
+  #   na.locf()
+  # data_countries <- rbind(data_countries %>% filter(sector_lv2!="AFOLU: LULUCF"),data_countries_lulucf)
+  # data_countries <- data_countries %>% mutate(blarg=ifelse(sector_lv2=="AFOLU: LULUCF" & year>=projection,"0",NA))
   
   
   data_countries$sector_lv2 <- fct_relevel(data_countries$sector_lv2,"AFOLU: LULUCF")
@@ -1012,13 +1012,17 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
   
   indicator_text <- data_indicators %>% filter(iso==country_iso)
   
-  indicator_text = paste0(data_countries$country[1]," released an estimated ",indicator_text$ghg_total[1]," MtCO2e in 2023 (excl. LULUCF), a change of ",indicator_text$change_rel[1]," % compared to the previous year. Per capita GHG emissions were ",indicator_text$ghg_per_capita[1], " tCO2e in 2023. Cumulative CO2 emissions since 1850 were ",indicator_text$co2_historic[1]," GtCO2, or about ",indicator_text$co2_historic_fraction[1], "% of global emissions to date. LULUCF data are projected forward from ",projection,".")
+  # indicator_text = paste0(data_countries$country[1]," released an estimated ",indicator_text$ghg_total[1]," MtCO2e in 2023 (excl. LULUCF), a change of ",indicator_text$change_rel[1]," % compared to the previous year. Per capita GHG emissions were ",indicator_text$ghg_per_capita[1], " tCO2e in 2023. Cumulative CO2 emissions since 1850 were ",indicator_text$co2_historic[1]," GtCO2, or about ",indicator_text$co2_historic_fraction[1], "% of global emissions to date. LULUCF data are projected forward from ",projection,".")
+  
+  indicator_text = paste0(data_countries$country[1]," released an estimated ",indicator_text$ghg_total[1]," MtCO2e in 2023 (excl. LULUCF), a change of ",indicator_text$change_rel[1]," % compared to the previous year. Per capita GHG emissions were ",indicator_text$ghg_per_capita[1], " tCO2e in 2023. Cumulative CO2 emissions since 1850 were ",indicator_text$co2_historic[1]," GtCO2, or about ",indicator_text$co2_historic_fraction[1], "% of global emissions to date.")
   
   
   
   p1 <- ggplot() +
-    geom_area(data=data_countries %>% filter(year<=projection),color="#636363",aes(x=year,y=value,fill=sector_lv2)) +
-    geom_area(data=data_countries %>% filter(year>=projection),color="#636363",aes(x=year,y=value,fill=sector_lv2,alpha=blarg)) +
+    geom_area(data=data_countries,color="#636363",aes(x=year,y=value,fill=sector_lv2)) +
+    #geom_area(data=data_countries %>% filter(year<=projection),color="#636363",aes(x=year,y=value,fill=sector_lv2)) +
+    #geom_area(data=data_countries %>% filter(year>=projection),color="#636363",aes(x=year,y=value,fill=sector_lv2,alpha=blarg)) +
+    
     {if(is_crf) geom_path(data=data_countries_crfs,
                           inherit.aes=FALSE,
                           aes(x=year,y=value,group=iso),
@@ -1046,7 +1050,7 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
   
   p2 <- data_countries %>% 
     filter(year==pull_out_year) %>% 
-    ggplot(aes(x=as.factor(year),y=value,fill=sector_lv2,alpha=blarg)) +
+    ggplot(aes(x=as.factor(year),y=value,fill=sector_lv2)) +
     geom_col(color="#636363") +
     theme_wl() +
     ylim(layer_scales(p1)$y$range$range) +
@@ -1151,6 +1155,7 @@ plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
 #   distinct()
 # 
 # countries <- left_join(countries,data_wdi_pop %>% filter(year==2020) %>% select(iso,population))
+# #countries <- left_join(countries,data_gcb_co2_ffi %>% filter(year==2020) %>% select(iso,gcb=value))
 # countries <- countries %>%
 #   mutate(population=ifelse(iso=="AIR",1,population)) %>%
 #   mutate(population=ifelse(iso=="SEA",1,population)) %>%
@@ -1160,10 +1165,13 @@ plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
 # 
 # 
 # for (i in 1:length(countries$iso)) {
+#   
+#   plot <- plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023)
 # 
-#   #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=9,dpi=300)
-#   ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".png"),path = "results/countries/lowres/",device = "png",height = 4,width=9,dpi=150)
-#   #ggsave(plot_country(countries$iso[i],data_ghg,data_crfs,data_indicators,2023),filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=9)
+#   ggsave(plot,filename = paste0(countries$country[i],".png"),path = "results/countries/",device = "png",height = 4,width=9,dpi=300)
+#   ggsave(plot,filename = paste0(countries$country[i],".png"),path = "results/countries/lowres/",device = "png",height = 4,width=9,dpi=150)
+#   ggsave(plot,filename = paste0(countries$country[i],".pdf"),path = "results/countries/",device = "pdf",height = 4,width=9)
+#   ggsave(plot,filename = paste0(countries$country[i],".svg"),path = "results/countries/",device = "svg",height = 4,width=9)
 # 
 # 
 # }
@@ -1178,9 +1186,11 @@ plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
 #   mutate(country="African Union")
 # 
 # plot_country("AU55",blarg,data_crfs,data_indicators,2023)
-# 
+#  
 # ggsave(p,filename = "African Union.png",path = "results/countries",device = "png",height = 4,width=9,dpi=300)
+# ggsave(p,filename = "African Union.png",path = "results/countries/lowres/",device = "png",height = 4,width=9,dpi=150)
 # ggsave(p,filename = "African Union.pdf",path = "results/countries",device = "pdf",height = 4,width=9)
+# ggsave(p,filename = "African Union.svg",path = "results/countries",device = "svg",height = 4,width=9)
 
 
 ```
