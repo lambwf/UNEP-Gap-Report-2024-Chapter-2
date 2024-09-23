@@ -27,7 +27,7 @@ source("https://raw.githubusercontent.com/lambwf/Codebase/main/figure_style.R")
 source("https://raw.githubusercontent.com/lambwf/Codebase/main/reshape_with_labels.R")
 source("https://raw.githubusercontent.com/lambwf/Codebase/main/locate_shares.R")
 source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_gcb_countries_v2023.R")
-source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_edgar_v8.R")
+source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_edgar_v9.R")
 
 
 
@@ -37,29 +37,47 @@ source("https://raw.githubusercontent.com/lambwf/Codebase/main/load_edgar_v8.R")
 
 ```{r load_EDGAR}
 
-## load EDGAR data (https://edgar.jrc.ec.europa.eu/dataset_ghg80)
+#### Load and organise EDGAR data
 
-edgar_co2 <- read.xlsx("sources/IEA_EDGAR_CO2_1970_2022.xlsx",sheet=2,startRow=10)
-edgar_ch4 <- read.xlsx("sources/EDGAR_CH4_1970_2022.xlsx",sheet=2,startRow = 10)
-edgar_n2o <- read.xlsx("sources/EDGAR_N2O_1970_2022.xlsx",sheet=2,startRow = 10)
-edgar_fgas <- read.xlsx("sources/EDGAR_F-gases_1990_2022.xlsx",sheet=2,startRow = 10)
-data_ghg <- load_edgar(edgar_co2,edgar_ch4,edgar_n2o,edgar_fgas)
+# Load EDGAR data (https://edgar.jrc.ec.europa.eu/dataset_ghg80)
+
+edgar_co2  <- read.xlsx("sources/not public/EDGAR_2024_CO2_1970_2023_v2.xlsx",sheet=2,startRow=9)
+edgar_ch4  <- read.xlsx("sources/not public/EDGAR_2024_CH4_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+edgar_n2o  <- read.xlsx("sources/not public/EDGAR_2024_N2O_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+edgar_fgas <- read.xlsx("sources/not public/EDGAR_2024_F-gases_1970_2023_v2.xlsx",sheet=2,startRow = 9)
+data_ghg   <- load_edgar(edgar_co2,edgar_ch4,edgar_n2o,edgar_fgas)
 
 
-## join GWPs and calculate CO2e
+# Remove biogenic CO2 as these emissions are normally accounted in equilibrium with removals
 
-gwps <- read.csv("https://raw.githubusercontent.com/openclimatedata/globalwarmingpotentials/main/globalwarmingpotentials.csv",skip = 9)
+data_ghg <- data_ghg %>% filter(gas!="CO2bio")
+
+
+# Load global warming potentials (GWPs) to calculate CO2e for each gas
+
+gwps <- read.csv("https://raw.githubusercontent.com/openclimatedata/globalwarmingpotentials/main/globalwarmingpotentials.csv",skip = 10)
+gwps <- gwps %>% select(gas=Species,gwp100=AR6GWP100)
+
+
+# Join GWPs
 
 data_ghg$gas <- gsub("-","",data_ghg$gas)
-data_ghg <- left_join(data_ghg,gwps %>% select(gas=Species,AR6GWP100)) %>% 
-  mutate(AR6GWP100=ifelse(gas=="CO2",1,AR6GWP100))
+data_ghg <- left_join(data_ghg,gwps) %>% 
+  mutate(gwp100=ifelse(gas=="CO2",1,gwp100))
 
-# check all gwps joined
-check <- data_ghg %>% filter(is.na(AR6GWP100))
-check <- data_ghg %>% select(gas,AR6GWP100) %>% distinct()
 
-data_ghg <- data_ghg %>% mutate(value_gwp=value*AR6GWP100)
+# Check that all gwps joined
 
+check <- data_ghg %>% filter(is.na(gwp100))
+check <- data_ghg %>% select(gas,gwp100) %>% distinct()
+
+
+# Calculate CO2e for each gas
+
+data_ghg <- data_ghg %>% mutate(value_gwp=value*gwp100)
+
+
+# Create list of individual f-gases to merge these into a single gas variable
 
 list_fgases <- data_ghg %>% 
   select(gas) %>% 
@@ -67,7 +85,10 @@ list_fgases <- data_ghg %>%
   mutate(group=ifelse(gas=="CO2","CO2 Fossil",NA)) %>% 
   mutate(group=ifelse(gas=="CH4","CH4",group)) %>% 
   mutate(group=ifelse(gas=="N2O","N2O",group)) %>% 
-  mutate(group=ifelse(is.na(group),"Fgases",group))
+  mutate(group=ifelse(is.na(group),"F-gases",group))
+
+
+# Group f-gases into a single variable
 
 data_ghg <- left_join(data_ghg,list_fgases,by="gas")
 data_ghg <- data_ghg %>% 
@@ -75,74 +96,293 @@ data_ghg <- data_ghg %>%
   group_by(iso,country,code,code_description,gas,year) %>% 
   summarise(value=sum(value_gwp,na.rm=TRUE))
 
-## Gg to tons
+
+# Convert Gg to tons
+
 data_ghg$value = data_ghg$value*1000
 
-# check global totals
-check <- data_ghg %>% filter(year==2022) %>% group_by(gas) %>% summarise(value=sum(value,na.rm=T))
-sum(check$value)
 
+#### Join additional global data
 
-### consistent names
-
-newnames <- data_ghg %>% 
-  ungroup() %>% 
-  select(iso) %>% 
-  distinct() %>% 
-  mutate(newname=countrycode(iso,"iso3c","country.name")) %>% 
-  mutate(newname=ifelse(iso=="AIR","Intl. Aviation",newname)) %>% 
-  mutate(newname=ifelse(iso=="SEA","Intl. Shipping",newname)) %>% 
-  mutate(newname=ifelse(iso=="SCG","Serbia and Montenegro",newname)) %>% 
-  mutate(newname=ifelse(iso=="ANT","Netherlands Antilles",newname))
-
-data_ghg <- left_join(data_ghg,newnames,by="iso") %>% 
-  mutate(country=newname) %>% 
-  select(-newname) %>% 
-  filter(!is.na(iso))
-
-
-### aggregate sectors
-
-write.xlsx(data_ghg %>% ungroup() %>% select(code,code_description) %>% distinct() %>% arrange(code),"cc_sectors.xlsx")
-data_ghg <- left_join(data_ghg,read.xlsx("sources/cc_sectors.xlsx"),by=join_by(code, code_description))
-
-data_ghg$gas <- as.factor(data_ghg$gas)
-data_ghg$gas <- fct_relevel(data_ghg$gas,"CO2 Fossil","CH4","N2O","Fgases")
-
-data_ghg$subsector <- as.factor(data_ghg$subsector)
-data_ghg$subsector <- fct_reorder(data_ghg$subsector,data_ghg$subsector_order)
-
-
-data_ghg <- data_ghg %>% 
-  mutate(year=as.numeric(year)) %>% 
-  group_by(iso,country,sector,subsector,subsector_codes,gas,year) %>% 
-  summarise(value=sum(value,na.rm=TRUE))
-
-
-## Global Carbon Project CO2 LUC (https://globalcarbonbudget.org/carbonbudget2023/)
+# Load Global Carbon Budget (GCB) CO2 land use change (LUC) emissions (https://globalcarbonbudget.org/carbonbudget2023/)
 
 data_gcb_co2_luc <- load_gcb_countries_luc(
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=2),
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=3),
-  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4)
-)
-data_gcb_co2_luc$iso[grepl("Türkiye",data_gcb_co2_luc$country)] <- "TUR"
+  readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4))
+
+data_gcb_co2_luc <- data_gcb_co2_luc %>% 
+  filter(year>=1970) %>% 
+  filter(country=="Global") %>% 
+  select(year,value=mean) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  mutate(value=value*1e9)
 
 
+# Add the GCB projection for 2023 (https://essd.copernicus.org/articles/15/5301/2023/) and join
 
-wd_iea <- read.csv("sources/not public/WBAL_17052024175316637.csv")
-wd_iea <- wd_iea %>% 
-  mutate(sector=Flow) %>% 
-  mutate(sector=ifelse(sector=="Residential","Buildings",sector)) %>% 
-  mutate(sector=ifelse(sector=="Commercial and public services","Buildings",sector)) %>% 
-  select(country=Country,sector,product=Product,year=Time,value=Value)
-wd_iea <- wd_iea %>% 
-  filter(year>=1990)
+data_gcb_co2_luc <- data_gcb_co2_luc %>% 
+  add_row(year=2023,value=1.1*(44/12)*1e9)
+
+data_gcb_co2_luc <- data_gcb_co2_luc %>% 
+  mutate(code="3B") %>% 
+  mutate(code_description="Land use change") %>% 
+  mutate(gas="CO2 LULUCF")
+
+#data_ghg <- rbind(data_ghg,data_gcb_co2_luc)
+
+
+#### Aggregate sectors and set factor levels
+
+# Aggregate sectors based on own excel file
+
+data_ghg <- left_join(data_ghg,read.xlsx("sources/cc_sectors.xlsx"),by=join_by(code, code_description))
+
+
+# Set factor order based on own excel file
+
+data_ghg$gas <- as.factor(data_ghg$gas)
+data_ghg$gas <- fct_relevel(data_ghg$gas,"CO2 Fossil","CO2 LULUCF","CH4","N2O","F-gases")
+
+data_ghg$sector_lv1 <- as.factor(data_ghg$sector_lv1)
+data_ghg$sector_lv1 <- fct_reorder(data_ghg$sector_lv1,data_ghg$sector_lv1_order)
+
+data_ghg$sector_lv2 <- as.factor(data_ghg$sector_lv2)
+data_ghg$sector_lv2 <- fct_reorder(data_ghg$sector_lv2,data_ghg$sector_lv2_order)
+
+data_ghg$sector_lv3 <- as.factor(data_ghg$sector_lv3)
+data_ghg$sector_lv3 <- fct_reorder(data_ghg$sector_lv3,data_ghg$sector_lv3_order)
+
+
+# merge EU  
+
+cc_EU <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/european-union.csv") %>% 
+  select(iso=Code) %>% 
+  mutate(EU="1")
+
+data_ghg <- left_join(data_ghg,cc_EU)
+data_ghg <- rbind(data_ghg %>% filter(is.na(EU)) %>% select(-EU),data_ghg %>% 
+  filter(EU==1) %>% 
+  mutate(country="European Union") %>% 
+  mutate(iso="EU27") %>% 
+  select(-EU) %>% 
+  group_by(across(c(-value))) %>% 
+  summarise(value=sum(value,na.rm=TRUE)))
+
 
 
 ```
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r figure_global_changes, echo=FALSE, fig.width=8,fig.height=5, fig.path="results/",dev=c('png','pdf','svg')}
+
+
+
+## first calculate the top absolute changes by country
+
+country_change <- data_ghg %>% 
+  filter(year %in% c(2022,2023)) %>% 
+  group_by(country,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE)/1e6)
+
+
+# choose top 6 total changes
+
+country_change <- spread(country_change,year,value)
+country_change <- country_change %>% 
+  mutate(change_abs=`2023`-`2022`,
+         change_rel=change_abs/`2022`) %>%
+  arrange(desc(abs(change_abs))) %>% 
+  ungroup() %>% 
+  mutate(include_country = ifelse(row_number() <= 6, row_number()+1, 9))
+
+
+# rejoin to detailed sector data
+
+country_change <- left_join(data_ghg,country_change %>% select(country,include_country),by=join_by(country))
+
+country_change <- country_change %>% 
+  filter(year %in% c(2022,2023)) %>% 
+  group_by(country,include_country,sector_lv2,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE)/1e6)
+
+
+# join bookkeeping data as a "country"
+
+country_change <- rbind(country_change,data_gcb_co2_luc %>% 
+                          filter(year %in% c(2022,2023)) %>% 
+                          group_by(year) %>% 
+                          summarise(value=value/1e6) %>% 
+                          mutate(country="LULUCF CO2 (bookkeeping)") %>%
+                          mutate(sector_lv2="AFOLU: LULUCF") %>% 
+                          mutate(include_country=8))
+
+
+country_change <- spread(country_change,year,value)
+country_change <- country_change %>% 
+  mutate(change_abs=`2023`-`2022`,
+         change_rel=change_abs/`2022`) %>% 
+  arrange(desc(abs(change_abs))) %>%  
+  ungroup() %>% 
+  mutate(sector_lv2=as.character(sector_lv2))
+
+
+# Merge non-included countries
+
+country_change <- rbind(country_change %>% 
+                         filter(include_country!=9),
+                       country_change %>% 
+                         filter(include_country==9) %>%
+                         mutate(country="Other countries") %>% 
+                         group_by(country,sector_lv2,include_country) %>% 
+                         summarise(`2022`=sum(`2022`),`2023`=sum(`2023`),change_abs=sum(change_abs),change_rel=NA))
+
+
+# Merge non-included sectors
+
+# sector_change <- sector_change %>% 
+#   mutate(sector_lv2 = ifelse(include_sector==99,"Other",sector_lv2)) %>% 
+#   group_by(country,sector_lv2,include_country,include_sector) %>% 
+#   summarise(`2022`=sum(`2022`),`2023`=sum(`2023`),change_abs=sum(change_abs),change_rel=NA)
+
+# Re-arrange order of countries so that net additions come first, net reductions last
+
+country_order <- country_change %>% 
+  group_by(country) %>% 
+  mutate(change_abs=sum(change_abs)) %>% 
+  select(country,change_abs) %>% 
+  distinct() %>% 
+  ungroup()
+
+# Bump other countries to the end of net additions
+
+country_order <- country_order %>% 
+  mutate(change_abs=ifelse(country=="Other countries",0,change_abs)) %>% 
+  arrange(desc(change_abs)) %>% 
+  mutate(include_country=row_number()+1) %>% 
+    select(country,include_country)
+
+
+country_change <- left_join(country_change %>% ungroup() %>% select(-include_country),country_order)
+
+country_change <- country_change %>% 
+  mutate(value=change_abs)
+
+
+# add total emissions before
+
+country_change <- bind_rows(country_change,data.frame(country="2022 Emissions",
+                                                  sector_lv2="Total",
+                                                  change_abs=sum(country_change$`2022`,na.rm=T),
+                                                  include_country=1))
+
+country_change <- bind_rows(country_change,data.frame(country="2022 Emissions",
+                                                  sector_lv2="Waste & Other",
+                                                  change_abs=0.0000000001,
+                                                  include_country=1))
+
+# add a fake waste and other sector to LULUCF for visualising lines between columns
+
+country_change <- bind_rows(country_change,data.frame(country="LULUCF CO2 (bookkeeping)",
+                                                  sector_lv2="Waste & Other",
+                                                  change_abs=0.0000000001,
+                                                  include_country=9))
+
+
+# Set up data for waterfall
+
+country_change <- country_change %>%
+  arrange(include_country) %>% 
+  ungroup() %>% 
+  mutate(end = cumsum(change_abs),
+         start = c(0, head(end, -1)))
+
+
+# add total emissions after
+
+country_change <- bind_rows(country_change,data.frame(country="2023 Emissions",
+                                                  sector_lv2="Total",
+                                                  include_country=10,
+                                                  start=0,
+                                                  end=sum(country_change$`2023`,na.rm=T)))
+
+
+# calculate total change by each country
+
+country_change <- country_change %>% 
+  group_by(country) %>% 
+  mutate(group_change=sum(change_abs)) %>% 
+  mutate(group_change=ifelse(country=="2022 Emissions",NA,group_change))
+
+country_change$group_change[country_change$country=="2023 Emissions"] <- sum(unique(country_change$group_change),na.rm=T)
+
+country_change <- country_change%>% 
+  mutate(group_change=round(group_change,0)) %>% 
+  mutate(group_change=ifelse(group_change>0,paste0("+",group_change),paste0(group_change)))
+
+
+# rename int aviation
+
+country_change$country[country_change$country=="Int. Aviation"] <- "International aviation"
+
+
+# fix colours and factor levels
+
+colours <- read.xlsx("sources/cc_sectors.xlsx") %>% 
+  select(sector_lv2,sector_lv2_colours,sector_lv2_order) %>% 
+  distinct() %>% 
+  add_row(sector_lv2="Total",sector_lv2_colours="#d9d9d9",sector_lv2_order=0) %>% 
+  arrange(sector_lv2_order)
+
+country_change$country <- as.factor(country_change$country)
+country_change$country <- fct_reorder(country_change$country,country_change$include_country)
+
+country_change <- left_join(country_change,colours,by = join_by(sector_lv2))
+country_change$sector_lv2 <- as.factor(country_change$sector_lv2)
+country_change$sector_lv2 <- fct_reorder(country_change$sector_lv2,country_change$sector_lv2_order)
+
+country_change <- country_change %>% 
+  arrange(include_country,sector_lv2_order)
+
+
+# plot everything
+
+ggplot(country_change, aes(fill = sector_lv2)) +
+
+  geom_rect(aes(x = country,
+                xmin = include_country - 0.25, # control bar gap width
+                xmax = include_country + 0.25,
+                ymin = end,
+                ymax = start),
+                color="#636363"
+            ) +
+  
+  geom_segment(aes(x=ifelse(include_country == last(include_country),last(include_country),include_country+0.25), 
+                   xend=ifelse(include_country == last(include_country),last(include_country),include_country+0.75), 
+                   y=ifelse(sector_lv2 == "Waste & Other",
+                            end,
+                            # these will be removed once we set the y limits
+                            max(end)*2), 
+                   yend=ifelse(sector_lv2 == "Waste & Other",
+                               end,
+                               # these will be removed once we set the y limits
+                               max(end)*2)), 
+               colour="black") +
+  
+  geom_text(data=country_change %>% filter(sector_lv2 %in% c("Waste & Other","Total")),
+            aes(x=country,y=ifelse(grepl("\\+",group_change),end+100,end+100-as.numeric(group_change)),label=group_change),
+            color="#636363",
+            size=4) +
+  
+  
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 12)) +
+  coord_cartesian(ylim=c(56000,58000)) +
+  scale_fill_manual(values=colours$sector_lv2_colours) +
+  #ylab(bquote("Greenhouse gas emissions (Mt" ~CO[2]* "eq/yr)")) +
+  theme_wl() +
+  theme(axis.title = element_blank(),
+        legend.title = element_blank(),
+        axis.text.x = element_text(vjust=1,hjust=1,angle = 45)) +
+  labs(subtitle=bquote("Greenhouse gas emissions (Mt" ~CO[2]* "eq/yr)"))
+    
 ```
 

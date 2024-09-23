@@ -85,6 +85,24 @@ cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-C
 
 ```
 
+
+### Changes in total GHG emissions, 2022-2023
+
+```{r change_figure,out.width="80%",fig.align = 'center',results='asis'}
+cat("<br>")
+include_graphics("results/figure_global_changes-1.svg")
+
+```
+```{r change_links,results = 'asis'}
+
+cat("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links: ")
+cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
+    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_changes-1.png'>png</a>|
+    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_changes-1.pdf'>pdf</a>")
+
+```
+
+
 Top emitters
 =====================================  
 

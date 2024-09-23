@@ -42,8 +42,7 @@ wb <- createWorkbook()
 data_unep_2024 <- read.xlsx('results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx',sheet=2)
 data_unep_2024 <- gather(data_unep_2024,year,value,`1990`:`2023`) %>% select(gas,year,unep_2024=value) %>% mutate(year=as.numeric(year))
 data_unep_2024 <- data_unep_2024 %>% 
-  filter(!gas %in% c("CO2 Fossil","GHG")) %>% 
-  mutate(gas=ifelse(gas=="CO2 Fossil (excl. cement carbonation)","CO2 Fossil",gas))
+  filter(!gas %in% c("GHG"))
 data_unep_2024 <- rbind(data_unep_2024,data_unep_2024 %>% 
                           filter(gas %in% c("CO2 Fossil","CH4","N2O","F-gases","CO2 LULUCF (Bookkeeping)")) %>% 
                           group_by(year) %>% 
@@ -79,6 +78,47 @@ data_unep_2022 <- data_unep_2022 %>%
 data <- left_join(data_unep_2022,data_unep_2023,by=join_by(year,gas))
 data <- left_join(data,data_unep_2024,by=join_by(year,gas))
 
+
+data_table <- gather(data,dataset,value,-year,-gas) %>% 
+  filter(year==2019) %>% 
+  select(-year)
+
+
+uncertainties = data.frame(gas=c("CO2 Fossil","CO2 LULUCF (Bookkeeping)","CO2 LULUCF (Inventory)","CH4","N2O","F-gases"),uncertainty=c(0.08,0.7,0.7,0.3,0.6,0.3))
+
+data_table <- left_join(data_table,uncertainties,by="gas")
+data_table <- data_table %>% 
+  filter(gas!="GHG") %>% 
+  mutate(uncertainty_abs=value*uncertainty)
+
+data_table <- rbind(data_table %>% select(-uncertainty),data_table %>% 
+  filter(!gas %in% c("GHG","CO2 LULUCF (Inventory)")) %>% 
+  mutate(uncertainty_abs=uncertainty_abs^2) %>% 
+  group_by(dataset) %>% 
+  summarise(value=sum(value,na.rm=TRUE),
+            uncertainty_abs=sqrt(sum(uncertainty_abs,na.rm=TRUE))) %>% 
+  mutate(gas="GHG"))
+  
+
+data_table <- data_table %>%
+  mutate(value=ifelse(gas %in% c("GHG","CO2 Fossil","CH4"),signif(value,3),signif(value,2))) %>%
+  mutate(uncertainty_abs=signif(uncertainty_abs,2))
+
+data_table <- data_table %>%
+  mutate(value=paste0(value,"±",uncertainty_abs)) %>% 
+  select(-uncertainty_abs)
+
+
+data_table$gas <- as.factor(data_table$gas)
+data_table$gas <- fct_relevel(data_table$gas,"GHG","CO2 Fossil","CO2 LULUCF (Bookkeeping)","CO2 LULUCF (Inventory)","CH4","N2O","F-gases")
+
+
+
+
+data_table <- spread(data_table,dataset,value)
+write.xlsx(data_table,'results/UNEP-Gap-Report-2024-Chapter-2-Data-Differences.xlsx')
+
+
 ```
 
 ## Difference Plots
@@ -111,10 +151,10 @@ data %>% filter(year==2019) %>% filter(gas!="GHG") %>%
   theme_wl()
 
 
-data_table <- data %>% 
-  filter(year>=2019)
-data_table <- spread(data_table,year,value)
-write.xlsx(data_table,'results/UNEP-Gap-Report-2024-Chapter-2-Data-Differences.xlsx')
+
+
+
+
 
 ```
 

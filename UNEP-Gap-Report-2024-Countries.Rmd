@@ -102,6 +102,24 @@ data_lulucf <- data_lulucf %>%
   select(iso,country,code,code_description,gas,year,value) %>% 
   filter(year<=2021)
 
+data_lulucf_v2 <- read.xlsx('sources/not public/LULUCF NGHGI data for UNEP 2024.xlsx',startRow = 3) %>% 
+  rename(category=LAND.CATEGORY,country=UNFCCC.country,iso=country.code)
+data_lulucf_v2 <- gather(data_lulucf_v2,year,value,`2000`:`2023`) %>% 
+  filter(category=="LULUCF net") %>% 
+  mutate(value=value*1e6) %>%
+  mutate(year=as.numeric(year)) %>% 
+  mutate(gas="CO2 LULUCF") %>% 
+  mutate(code="3B") %>% 
+  mutate(code_description="Land use change") %>% 
+  filter(!is.na(year)) %>% 
+  filter(!is.na(iso)) %>% 
+  select(iso,country,code,code_description,gas,year,value) %>% 
+  filter(year<=2021)
+
+data_lulucf <- rbind(data_lulucf %>% filter(year<2000),data_lulucf_v2)
+data_lulucf <- data_lulucf %>% 
+  arrange(country,iso,year)
+
 data_ghg <- rbind(data_ghg,data_lulucf)
 
 

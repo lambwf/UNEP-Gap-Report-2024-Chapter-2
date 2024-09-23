@@ -326,14 +326,25 @@ plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
 
 # Compile and join national GHG inventory LULUCF data, for comparison with bookkeeping data
 
-data_grassi <- read.xlsx('sources/not public/Grassi_et_al_LULUCF.xlsx')
-data_grassi <- gather(data_grassi,year,value,-country,-iso) %>% 
+data_grassi <- read.xlsx('sources/not public/LULUCF NGHGI data for UNEP 2024.xlsx',startRow = 3) %>% 
+  rename(category=LAND.CATEGORY,country=UNFCCC.country,iso=country.code)
+data_grassi <- gather(data_grassi,year,value,`2000`:`2023`) %>% 
   mutate(gas="CO2 LULUCF (Inventory)") %>% 
   filter(country=="World") %>% 
+  filter(category=="LULUCF net") %>% 
   mutate(value=value*1e6) %>%
   mutate(year=as.numeric(year)) %>% 
   filter(!is.na(year)) %>% 
   filter(year<=2021)
+
+#data_grassi <- read.xlsx('sources/not public/Grassi_et_al_LULUCF.xlsx')
+# data_grassi <- gather(data_grassi,year,value,-country,-iso) %>% 
+#   mutate(gas="CO2 LULUCF (Inventory)") %>% 
+#   filter(country=="World") %>% 
+#   mutate(value=value*1e6) %>%
+#   mutate(year=as.numeric(year)) %>% 
+#   filter(!is.na(year)) %>% 
+#   filter(year<=2021)
 
 data_table <- rbind(data_ghg,data_grassi)
 data_table <- data_table %>% 
@@ -679,15 +690,15 @@ p2 + plot_spacer() + p3 + plot_layout(widths=c(2.2,-1.2,4))
 
 # Save figure data for designers
 
-# data_table_sector_share <- rbind(plot_sector_shares_1 %>% 
-#                  arrange(sector_lv2) %>% 
-#                  mutate(column=1) %>% 
+# data_table_sector_share <- rbind(plot_sector_shares_1 %>%
+#                  arrange(sector_lv2) %>%
+#                  mutate(column=1) %>%
 #                  select(column,sector=sector_lv2,value,share,label),
-#                plot_sector_shares_2 %>% 
-#                  arrange(sector_lv3) %>% 
-#                  mutate(column=2) %>% 
+#                plot_sector_shares_2 %>%
+#                  arrange(sector_lv3) %>%
+#                  mutate(column=2) %>%
 #                  select(column,sector=sector_lv3,value,share,label))
-# data_table_sector_share <- data_table_sector_share %>% 
+# data_table_sector_share <- data_table_sector_share %>%
 #   select(column,label,value,share)
 # 
 # 
