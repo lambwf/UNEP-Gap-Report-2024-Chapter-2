@@ -366,7 +366,7 @@ ggplot(country_change, aes(fill = sector_lv2)) +
                                end,
                                # these will be removed once we set the y limits
                                max(end)*2)), 
-               colour="black") +
+               colour="#636363") +
   
   geom_text(data=country_change %>% filter(sector_lv2 %in% c("Waste & Other","Total")),
             aes(x=country,y=ifelse(grepl("\\+",group_change),end+100,end+100-as.numeric(group_change)),label=group_change),
@@ -382,7 +382,7 @@ ggplot(country_change, aes(fill = sector_lv2)) +
   theme(axis.title = element_blank(),
         legend.title = element_blank(),
         axis.text.x = element_text(vjust=1,hjust=1,angle = 45)) +
-  labs(subtitle=bquote("Greenhouse gas emissions (Mt" ~CO[2]* "eq/yr)"))
+  labs(title="Change in total greenhouse gas emissions, 2022-2023",subtitle=bquote("Mt" ~CO[2]* "eq/yr"),caption="Data sources: EDGAR v9 (Crippa et al. 2024); GCB 2023 (Friedlingstein et al. 2023)")
     
 ```
 

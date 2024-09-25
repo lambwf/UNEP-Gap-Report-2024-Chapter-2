@@ -303,7 +303,7 @@ plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
             aes(x=year,y=63,label=paste(signif(totals,3))),
             size=3.5,colour="#252525") +
   
-  ylab("GHG Emissions (GtCO2e/year)") +
+  #ylab("GHG Emissions (GtCO2e/year)") +
   scale_fill_manual(values=c("#e78ac3","#fc8d62","#8da0cb","#66c2a5","#a6d854")) +
   scale_x_continuous(breaks=c(1990,2000,2010,2020,2023)) +
   
@@ -314,7 +314,9 @@ plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
         panel.grid.major.x = element_blank(),
         panel.border = element_blank(),
         legend.position = "right",
-        legend.title = element_blank())
+        legend.title = element_blank()) +
+  labs(title="Total net anthropogenic greenhouse gas emissions from 1990-2023",
+       subtitle=bquote("Gt" ~CO[2]~ "/year"))
 
 
 ```
@@ -614,8 +616,6 @@ p2 <- plot_sector_shares_1 %>%
         axis.ticks = element_blank(),
         panel.grid.major = element_blank(),
         panel.border = element_blank(),
-        plot.title.position = "plot",
-        plot.title = element_text(size=11,colour='#bdbdbd',hjust=1,face = "plain"),
         plot.background = element_blank(),
         plot.margin = unit(c(0,0,0,0),"cm"))
 
@@ -677,16 +677,16 @@ p3 <- plot_sector_shares_2 %>%
         axis.ticks = element_blank(),
         panel.border = element_blank(),
         panel.grid.major = element_blank(),
-        plot.title.position = "plot",
-        plot.title = element_text(size=11,colour='#bdbdbd',hjust=1,face = "plain"),
         plot.background = element_blank(),
         plot.margin = unit(c(0,0,0,0),"cm"))
 
 
 # Join figure
 
-p2 + plot_spacer() + p3 + plot_layout(widths=c(2.2,-1.2,4))
-
+p2 + plot_spacer() + p3  + plot_layout(widths=c(2.2,-1.2,4)) + plot_annotation(title="Total greenhouse gas emissions by sector in 2023",
+                                                                               subtitle=bquote("Gt" ~CO[2]~ "/year"),
+                                                                               theme=theme(plot.title=element_text(hjust=0.25),
+                                                                                           plot.subtitle = element_text(hjust=0.25)))
 
 # Save figure data for designers
 

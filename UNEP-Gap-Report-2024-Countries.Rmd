@@ -932,6 +932,16 @@ data_pop <- data_pop %>%
 
 
 
+## share of G20 incl. AU55 in global emissions
+data_share <- data_ghg %>% 
+  filter(iso %in% c("AUS","ARG","BRA","CAN","CHN","EU27","IND","IDN","JPN","MEX","RUS","SAU","KOR","TUR","GBR","USA","ZAF")) %>% 
+  group_by(year) %>% 
+  summarise(value=sum(value))
+
+data_share <- left_join(data_share,data_ghg %>% filter(iso=="WLD") %>% group_by(year) %>% summarise(value_world=sum(value)))
+data_share <- data_share %>% 
+  mutate(fraction=value/value_world)
+
 
 
 ```
