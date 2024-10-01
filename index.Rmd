@@ -52,7 +52,7 @@ library(knitr)
 Global emissions
 =====================================  
 
-### Total net anthropogenic greenhouse gas emissions from 1990-2023
+### 
 
 ```{r total_figure,out.width="80%",fig.align = 'center',results='asis'}
 cat("<br>")
@@ -69,7 +69,7 @@ cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-C
 
 
 
-### Total greenhouse gas emissions by sector in 2023
+### 
 
 ```{r sector_figure,out.width="80%",fig.align = 'center',results='asis'}
 cat("<br>")
@@ -86,7 +86,7 @@ cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-C
 ```
 
 
-### Changes in total GHG emissions, 2022-2023
+### 
 
 ```{r change_figure,out.width="80%",fig.align = 'center',results='asis'}
 cat("<br>")

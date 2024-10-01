@@ -7,7 +7,7 @@ output: word_document
 
 ```{r setup, include=FALSE}
 
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE,crop=FALSE)
 
 rm(list = ls())
 
@@ -173,7 +173,7 @@ data_ghg <- rbind(data_ghg %>% filter(is.na(EU)) %>% select(-EU),data_ghg %>%
 
 ```
 
-```{r figure_global_changes, echo=FALSE, fig.width=8,fig.height=5, fig.path="results/",dev=c('png','pdf','svg')}
+```{r figure_global_changes, echo=FALSE, fig.width=8,fig.height=5.5, fig.path="results/",dev=c('png','pdf','svg'),dpi=300}
 
 
 
@@ -346,7 +346,7 @@ country_change <- country_change %>%
 
 # plot everything
 
-ggplot(country_change, aes(fill = sector_lv2)) +
+p <- ggplot(country_change, aes(fill = sector_lv2)) +
 
   geom_rect(aes(x = country,
                 xmin = include_country - 0.25, # control bar gap width
@@ -379,10 +379,12 @@ ggplot(country_change, aes(fill = sector_lv2)) +
   scale_fill_manual(values=colours$sector_lv2_colours) +
   #ylab(bquote("Greenhouse gas emissions (Mt" ~CO[2]* "eq/yr)")) +
   theme_wl() +
+  labs(title="Change in total greenhouse gas emissions, 2022-2023",subtitle=bquote("Mt" ~CO[2]* "eq/yr"),caption="Data sources: EDGAR v9 (Crippa et al. 2024); GCB 2023 (Friedlingstein et al. 2023)") +
   theme(axis.title = element_blank(),
         legend.title = element_blank(),
-        axis.text.x = element_text(vjust=1,hjust=1,angle = 45)) +
-  labs(title="Change in total greenhouse gas emissions, 2022-2023",subtitle=bquote("Mt" ~CO[2]* "eq/yr"),caption="Data sources: EDGAR v9 (Crippa et al. 2024); GCB 2023 (Friedlingstein et al. 2023)")
+        axis.text.x = element_text(vjust=1,hjust=1,angle = 45))
+
+plot_spacer() / p + plot_layout(heights=c(1,30))
     
 ```
 

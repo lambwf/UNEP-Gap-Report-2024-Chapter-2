@@ -268,7 +268,7 @@ data_ghg$sector_lv3 <- fct_reorder(data_ghg$sector_lv3,data_ghg$sector_lv3_order
 
 ## Plot a figure showing global emissions by gas
 
-``` {r figure_global_gases,fig.width=8,fig.height=4, fig.path="results/",dev=c('png','pdf','svg')}
+``` {r figure_global_gases,fig.width=8,fig.height=4,fig.path="results/",dev=c('png','pdf','svg'),dpi=300}
 
 # Calculate total emissions by gas and year
 
@@ -283,6 +283,15 @@ plot_ghgs <- data_ghg %>%
 plot_ghgs_totals <- plot_ghgs %>% 
   group_by(year) %>% 
   summarise(totals=sum(value))
+
+
+# Calculate decadal growth rates
+
+plot_ghgs_totals <- plot_ghgs_totals %>% 
+  mutate(decade=cut(year,breaks=c(1990,1999,2009,2019),include.lowest = TRUE,labels=c("1990-1999","2000-2009","2010-2019"))) %>% 
+  group_by(decade) %>% 
+  mutate(growth_rate=growth_rate(year,totals)$rate) %>% 
+  mutate(growth_rate=round(growth_rate*100,1))
 
 
 # Make variable to display vertical lines and totals each decade
@@ -308,16 +317,17 @@ plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
   scale_x_continuous(breaks=c(1990,2000,2010,2020,2023)) +
   
   theme_wl() +
-  theme(axis.title.x = element_blank(),
+  labs(title="Total net anthropogenic greenhouse gas emissions from 1990-2023",
+       subtitle=bquote("Gt" ~CO[2]~ "/year"),
+       caption=str_wrap("Non-CO2 greenhouse gases are converted to CO2 equivalents using global warming potentials with a 100-year time horizon from the IPCC AR6 WGI (Forster et al., 2021). Sources: Crippa et al. (2024), Friedlingstein et al. (2023).",125)) +
+  theme(axis.title = element_blank(),
         axis.line.x=element_line(colour='#636363'),
         axis.line.y=element_line(colour='#636363'),
         panel.grid.major.x = element_blank(),
         panel.border = element_blank(),
         legend.position = "right",
-        legend.title = element_blank()) +
-  labs(title="Total net anthropogenic greenhouse gas emissions from 1990-2023",
-       subtitle=bquote("Gt" ~CO[2]~ "/year"))
-
+        legend.title = element_blank())
+  
 
 ```
 
@@ -708,57 +718,33 @@ p2 + plot_spacer() + p3  + plot_layout(widths=c(2.2,-1.2,4)) + plot_annotation(t
 
 ```
 
-``` {r figure_changes_by_sector,fig.width=7,fig.height=4,fig.path="results/",dev=c('png','pdf')}
-
-data_changes <- data_ghg %>% 
-  filter(year %in% c(2022,2023)) %>% 
-  group_by(year,sector_lv2,sector_lv2_colours) %>% 
-  summarise(value=sum(value,na.rm=T)/1e9)
-
-data_changes <- spread(data_changes,year,value)
-data_changes <- data_changes %>% 
-  mutate(change_abs=`2023`-`2022`,
-         change_rel=change_abs/`2022`)
-
-###
-
-data_changes <- data_ghg %>%
-  filter(year >= 1990 ) %>% 
-  group_by(year,sector_lv2,sector_lv2_colours) %>% 
-  summarise(value=sum(value,na.rm=T)/1e9) %>% 
-  mutate(change_abs=NA)
-sectors <- unique(data_changes$sector_lv2)
-
-for (j in 1:length(sectors)) {
-  
-for (i in 1991:2023) {
-  
-  data_changes$change_abs[data_changes$year==i & data_changes$sector_lv2==sectors[j]] <- 
-    data_changes$value[data_changes$year==i & data_changes$sector_lv2==sectors[j]] -
-    data_changes$value[data_changes$year==i-1 & data_changes$sector_lv2==sectors[j]]
-  
-}
-}
-
-sector_colours <- data_changes %>% select(sector_lv2,sector_lv2_colours) %>% distinct()
+``` {r figure_global_sankey,fig.height=5,fig.width=6,fig.path="results/",dev=c('png','pdf')}
 
 
-data_changes %>% 
-  filter(year>=2015) %>% 
-  mutate(year=as.factor(year)) %>% 
-  ggplot(.,aes(x=year,y=change_abs,fill=sector_lv2)) +
-  geom_col(color="#636363") +
-  geom_hline(yintercept=0) +
-  geom_point(data=data_changes %>% filter(year>=2015) %>% mutate(year=as.factor(year)) %>%  group_by(year) %>% summarise(change_abs=sum(change_abs)),
-             inherit.aes=FALSE,aes(x=year,y=change_abs)) +
-  scale_fill_manual(values=sector_colours$sector_lv2_colours) +
-  theme_wl() +
-  labs(title="Change in total emissions by year and sector",
-       subtitle="GtCO2e") +
-  theme(axis.title = element_blank(),
-        legend.title = element_blank())
+plot_sankey <- data_ghg %>% 
+  mutate(gas=as.character(gas)) %>% 
+  filter(year==2023) %>% 
+  mutate(gas=ifelse(grepl("CO2",gas),"CO2",gas))  %>% 
+  group_by(sector_lv2,gas) %>% 
+  summarise(value=sum(value,na.rm=TRUE))
+
+plot_sankey$gas <- as.factor(plot_sankey$gas)
+plot_sankey$gas <- fct_relevel(plot_sankey$gas,"CO2","CH4","N2O","F-gases")
+
+library(ggalluvial)
 
 
+ggplot(data = plot_sankey,
+       aes(axis1 = sector_lv2, axis2 = gas, y = value)) +
+  geom_alluvium(aes(fill = gas),color='#636363') +
+  geom_stratum(aes(fill=gas)) +
+  geom_text(stat = "stratum",
+            aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("sector_lv2", "gas"),
+                   expand = c(0.15, 0.05)) +
+  scale_fill_brewer(palette = "Set2",na.value="#939393") +
+  theme_void() +
+  theme(legend.position = "none")
 
 
 ```

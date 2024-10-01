@@ -199,3 +199,60 @@ data_comparison <- left_join(data_comparison,rank,by=join_by(iso))
 
 
 ```
+
+
+
+``` {r figure_changes_by_sector,fig.width=7,fig.height=4,fig.path="results/",dev=c('png','pdf')}
+
+data_changes <- data_ghg %>% 
+  filter(year %in% c(2022,2023)) %>% 
+  group_by(year,sector_lv2,sector_lv2_colours) %>% 
+  summarise(value=sum(value,na.rm=T)/1e9)
+
+data_changes <- spread(data_changes,year,value)
+data_changes <- data_changes %>% 
+  mutate(change_abs=`2023`-`2022`,
+         change_rel=change_abs/`2022`)
+
+###
+
+data_changes <- data_ghg %>%
+  filter(year >= 1990 ) %>% 
+  group_by(year,sector_lv2,sector_lv2_colours) %>% 
+  summarise(value=sum(value,na.rm=T)/1e9) %>% 
+  mutate(change_abs=NA)
+sectors <- unique(data_changes$sector_lv2)
+
+for (j in 1:length(sectors)) {
+  
+for (i in 1991:2023) {
+  
+  data_changes$change_abs[data_changes$year==i & data_changes$sector_lv2==sectors[j]] <- 
+    data_changes$value[data_changes$year==i & data_changes$sector_lv2==sectors[j]] -
+    data_changes$value[data_changes$year==i-1 & data_changes$sector_lv2==sectors[j]]
+  
+}
+}
+
+sector_colours <- data_changes %>% select(sector_lv2,sector_lv2_colours) %>% distinct()
+
+
+data_changes %>% 
+  filter(year>=2015) %>% 
+  mutate(year=as.factor(year)) %>% 
+  ggplot(.,aes(x=year,y=change_abs,fill=sector_lv2)) +
+  geom_col(color="#636363") +
+  geom_hline(yintercept=0) +
+  geom_point(data=data_changes %>% filter(year>=2015) %>% mutate(year=as.factor(year)) %>%  group_by(year) %>% summarise(change_abs=sum(change_abs)),
+             inherit.aes=FALSE,aes(x=year,y=change_abs)) +
+  scale_fill_manual(values=sector_colours$sector_lv2_colours) +
+  theme_wl() +
+  labs(title="Change in total emissions by year and sector",
+       subtitle="GtCO2e") +
+  theme(axis.title = element_blank(),
+        legend.title = element_blank())
+
+
+
+
+```
