@@ -268,7 +268,7 @@ data_ghg$sector_lv3 <- fct_reorder(data_ghg$sector_lv3,data_ghg$sector_lv3_order
 
 ## Plot a figure showing global emissions by gas
 
-``` {r figure_global_gases,fig.width=8,fig.height=4,fig.path="results/",dev=c('png','pdf','svg'),dpi=300}
+``` {r figure_global_gases,fig.width=8,fig.height=4.5,fig.path="results/",dev=c('png','pdf','svg'),dpi=300}
 
 # Calculate total emissions by gas and year
 
@@ -301,7 +301,7 @@ line_data <- data.frame(x=c(1990,1990,2000,2000,2010,2010,2020,2020,2023,2023),y
 
 # Plot
 
-plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
+p <- plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
   
   geom_area(color="#636363") +
   geom_line(inherit.aes = FALSE,
@@ -319,7 +319,7 @@ plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
   theme_wl() +
   labs(title="Total net anthropogenic greenhouse gas emissions from 1990-2023",
        subtitle=bquote("Gt" ~CO[2]~ "/year"),
-       caption=str_wrap("Non-CO2 greenhouse gases are converted to CO2 equivalents using global warming potentials with a 100-year time horizon from the IPCC AR6 WGI (Forster et al., 2021). Sources: Crippa et al. (2024), Friedlingstein et al. (2023).",125)) +
+       caption=str_wrap("Non-CO2 greenhouse gases are converted to CO2 equivalents using global warming potentials with a 100-year time horizon from the IPCC AR6 WGI (Forster et al., 2021). Sources: EDGARv9 (Crippa et al. 2024); GCB 2023 (Friedlingstein et al. 2023).",125)) +
   theme(axis.title = element_blank(),
         axis.line.x=element_line(colour='#636363'),
         axis.line.y=element_line(colour='#636363'),
@@ -328,6 +328,8 @@ plot_ghgs %>% ggplot(aes(x=year,y=value,fill=fct_rev(gas))) +
         legend.position = "right",
         legend.title = element_blank())
   
+
+plot_spacer() / p + plot_layout(heights=c(0.05,10))
 
 ```
 
@@ -696,7 +698,7 @@ p3 <- plot_sector_shares_2 %>%
 plot_spacer()/ (p2 + plot_spacer() + p3  + plot_layout(widths=c(2.2,-1.2,4))) + plot_layout(heights=c(-1.1,10)) + 
   plot_annotation(title="Total greenhouse gas emissions by sector",
                   subtitle=bquote("57.1 Gt" ~CO[2]~ "in 2023"),
-                  caption=str_wrap("Non-CO2 greenhouse gases are converted to CO2 equivalents using global warming potentials with a 100-year time horizon from the IPCC AR6 WGI (Forster et al., 2021). Sources: Crippa et al. (2024), Friedlingstein et al. (2023).",125),
+                  caption=str_wrap("Non-CO2 greenhouse gases are converted to CO2 equivalents using global warming potentials with a 100-year time horizon from the IPCC AR6 WGI (Forster et al., 2021). Sources: EDGARv9 (Crippa et al. 2024); GCB 2023 (Friedlingstein et al. 2023).",125),
                   theme=theme(plot.title=element_text(hjust=0.25,size=14,face="bold",color = '#636363'),
                               plot.subtitle = element_text(hjust=0.18,size=12,color = '#636363'),
                               plot.caption = element_text(size = 9,hjust = 0,color = '#bdbdbd')))
