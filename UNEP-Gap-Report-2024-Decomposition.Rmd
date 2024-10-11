@@ -385,6 +385,7 @@ p <- ggplot(country_change, aes(fill = sector_lv2)) +
         axis.text.x = element_text(vjust=1,hjust=1,angle = 45))
 
 plot_spacer() / p + plot_layout(heights=c(1,30))
-    
+
+
 ```
 
