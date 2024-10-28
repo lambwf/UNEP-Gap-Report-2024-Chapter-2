@@ -237,6 +237,10 @@ out <- lapply(seq_along(filenames), function(i) {
 Info
 =====================================
 
+### The Emissions Gap Report
+
+This content was developed for the UN Environment Programme Emissions Gap Report 2024. The full report can be downloaded <a href="https://www.unep.org/resources/emissions-gap-report-2024">here</a>. 
+
 
 ### Authors
 
