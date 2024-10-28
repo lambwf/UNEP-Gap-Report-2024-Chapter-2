@@ -259,7 +259,7 @@ Figures and analysis are produced by <a href="https://www.mcc-berlin.net/en/abou
 
 The following underlying sources are used to produce all figures:
 
-* The EDGAR v8.0 database of greenhouse gas emissions (<a href="https://edgar.jrc.ec.europa.eu/dataset_ghg80">Crippa et al. 2024</a>)
+* The EDGAR v9.0 database of greenhouse gas emissions (<a href="https://edgar.jrc.ec.europa.eu/report_2024">Crippa et al. 2024</a>)
 * The Global Carbon Budget database of historic CO2 emissions (<a href="https://globalcarbonbudget.org/carbonbudget2023/">Friedlingstein et al. 2023</a>)
 * The National GHG Inventory Database of CO2 LULUCF emissions (<a href="https://zenodo.org/records/7190601">Grassi et al. 2024</a>)
 * The UNFCCC National Inventory Submissions (<a href="https://unfccc.int/ghg-inventories-annex-i-parties/2023">UNFCCC 2024</a>)

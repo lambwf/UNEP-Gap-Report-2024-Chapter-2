@@ -656,7 +656,10 @@ data_indicators <- rbind(data_indicators %>% filter(iso!="AU55"),spread(data_ind
 
 ## Least Developed Countries
 
-cc_LDC <- read.xlsx("sources/cc_Least_Developed_Countries.xlsx")
+cc_LDC <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/refs/heads/main/data/ldc.csv") %>% 
+  select(iso=Code) %>% 
+  mutate(LDC=1)
+
 data_indicators_ldc <- left_join(data_indicators,cc_LDC,by="iso") %>%
   filter(!is.na(LDC)) %>%
   mutate(iso="LDC") %>%
@@ -912,7 +915,7 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
       mutate(sector_lv2="AFOLU: LULUCF") %>% 
       mutate(sector_lv2_colours="#a6d854") %>% 
       mutate(sector_lv2_order=8) %>% 
-      mutate(sector_lv2_icons="C:/Users/lamw/ownCloud/Projects/UNEP Gap Report 2024/sources/icons/Land use.png")
+      mutate(sector_lv2_icons="C:/Users/lamw/ownCloud/Projects/UNEP-Gap-Report-2024/sources/icons/Land use.png")
     
     data_countries <- rbind(data_countries,data_crf_lulucf)
     data_countries$sector_lv2 <- fct_reorder(data_countries$sector_lv2,data_countries$sector_lv2_order)
@@ -1095,14 +1098,14 @@ plot_country <- function(country_iso,data_ghg,data_crfs,data_indicators,pull_out
 
 ```{r country_test, fig.width=9,fig.height=4,echo=FALSE,warning=FALSE}
 
-
-plot_country("USA",data_ghg,data_crfs,data_indicators,2023)
-plot_country("BRA",data_ghg,data_crfs,data_indicators,2023)
-plot_country("DEU",data_ghg,data_crfs,data_indicators,2023)
-plot_country("AIA",data_ghg,data_crfs,data_indicators,2023)
-plot_country("LBR",data_ghg,data_crfs,data_indicators,2023)
-plot_country("IRL",data_ghg,data_crfs,data_indicators,2023)
-plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
+# 
+# plot_country("USA",data_ghg,data_crfs,data_indicators,2023)
+# plot_country("BRA",data_ghg,data_crfs,data_indicators,2023)
+# plot_country("DEU",data_ghg,data_crfs,data_indicators,2023)
+# plot_country("AIA",data_ghg,data_crfs,data_indicators,2023)
+# plot_country("LBR",data_ghg,data_crfs,data_indicators,2023)
+# plot_country("IRL",data_ghg,data_crfs,data_indicators,2023)
+# plot_country("SWE",data_ghg,data_crfs,data_indicators,2023)
 
 # ggsave(plot_country("BRA",data_ghg,data_indicators,"yes"),filename = "test.png",path = "results/",device = "png",height = 4,width=8.5,dpi=300)
 
