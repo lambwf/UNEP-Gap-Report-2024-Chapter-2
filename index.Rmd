@@ -1,269 +1,258 @@
 ---
-title: "UNEP Emissions Gap Report - Ch2 Emissions Trends"
+title: "UNEP Emissions Gap Report 2024 - Chapter 2 Figures"
 output: 
-  flexdashboard::flex_dashboard:
-    orientation: columns
-    vertical_layout: scroll
-    self_contained: no
-    source_code: "https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2"
-    theme:
-      version: 4
-      bootswatch: yeti
-
+  html_document:
+    self_contained: true
 ---
-
-<style type="text/css">
-
-body {
-	width: 940px;
-	margin: auto;
-}
-
-html {
-  font-size: 14px;
-}
-
-.chart-title {  /* chart_title  */
-  font-size: 16px;
-
-.figure-title {  /* figure_title  */
-  color: red;
-  font-size: 20px;
-
-img {
-    max-width: 100%;
-    max-height: 100%;
-}
-
-</style>
-
-
 
 ```{r setup, include=FALSE}
 
-rm(list = ls())
-library(flexdashboard)
-library(tidyverse)
 library(knitr)
+library(tidyverse)
+knitr::opts_chunk$set(echo=FALSE)
 
 ```
 
+``` {css}
 
-Global emissions
-=====================================  
+h1.title {
+  display: none;
+}
 
-### 
+.banner {
+  width: 100%;
+  height: 50px;
+  background-color: #008cba;
+  color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-sizing: border-box;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
 
-```{r total_figure,out.width="80%",fig.align = 'center',results='asis'}
-cat("<br>")
-include_graphics("results/figure_global_gases-1.svg")
+.title {
+  font-size: 18px;
+}
 
-```
-```{r total_links,results = 'asis'}
+.banner a {
+  color: #f5f5f5;
+  text-decoration: none;
+}
 
-cat("<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links: ")
-cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
-    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_gases-1.png'>png</a>|
-    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_gases-1.pdf'>pdf</a>")
-```
+.banner a:hover {
+  text-decoration: underline;
+}
 
+body {
+  font-family: Arial, sans-serif;
+  margin: 70px 20px 20px 20px;
+  background-color: #f9f9f9;
+}
 
+.figure-container {
+  width: 700px;
+  height: 350px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+  background-color: white;
+}
 
-### 
+.figure-container svg {
+  max-width: 100%;
+  height: auto;
+  max-height: 300px;
+  display: block;
+  margin: 0 auto 10px;
+}
 
-```{r sector_figure,out.width="80%",fig.align = 'center',results='asis'}
-cat("<br>")
-include_graphics("results/figure_global_sector_shares-1.svg")
+.figure-container polyline {
+  fill: none;
+}
 
-```
-```{r sector_links,results = 'asis'}
+.figure-text {
+  font-size: 12px;
+}
 
-cat("<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links: ")
-cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
-    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_sector_shares-1.png'>png</a>|
-    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_sector_shares-1.pdf'>pdf</a>")
+.grid {
+  display: grid;
+  justify-content:center;
+  align-items:center;
+  column-gap: 10px;
+  row-gap: 1em;
+  grid-template-columns: 1fr 1fr;
+}
 
-```
+.text-container {
+  width: 700px;
+  margin: 0 auto;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+  background-color: white;
+  text-align: left;
+  font-size: 14px;
+  grid-column: span 2;
+}
 
-
-### 
-
-```{r change_figure,out.width="80%",fig.align = 'center',results='asis'}
-cat("<br>")
-include_graphics("results/figure_global_changes-1.svg")
-
-```
-```{r change_links,results = 'asis'}
-
-cat("<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links: ")
-cat("<a target=\"_blank\" href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Global.xlsx'>data</a>|
-    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_changes-1.png'>png</a>|
-    <a target=\"_blank\" href='https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/figure_global_changes-1.pdf'>pdf</a>")
-
-```
-
-
-Top emitters
-=====================================  
-
-
-```{r top_emitters, echo = FALSE, eval = TRUE,results='asis'}
-
-filenames <- c("results/countries/China.svg",
-               "results/countries/United States.svg",
-               "results/countries/India.svg",
-               "results/countries/European Union.svg",
-               "results/countries/Russia.svg",
-               "results/countries/Brazil.svg")
-
-out <- lapply(seq_along(filenames), function(i) {
-  
-  # Tab header, no title in tile as these are in figures
-  a1 <- knitr::knit_expand(text = "### \n")
-  
-  # Start R chunk
-  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='80%',fig.align = 'center'} \n")
-  #a2 <- knitr::knit_expand(text = "\n```{r, results='asis'} \n")
-  
-  # Render figure
-  #a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
-  a3  <- knitr::knit_expand(text = paste0("cat('<img src = \"",filenames[i],"\" alt=\"img\"/>')"))
-  
-  # End R chunk
-  a4 <- knitr::knit_expand(text = "\n```\n")
-  
-  
-  # Start another R chunk
-  a5 <- knitr::knit_expand(text = "\n```{r, results='asis'} \n")
-  
-  # Include links to figure and data
-  country <- sub(".*/(.*)\\.svg", "\\1", filenames[i])
-  
-  link_1 <- "<a target=\"_blank\" href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
-  
-  link_2 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".png")
-  link_2 <- paste0("<a target=\"_blank\" href=","\"",link_2,"\"",">png</a>")
-
-  link_3 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".pdf")
-  link_3 <- paste0("<a target=\"_blank\" href=","\"",link_3,"\"",">pdf</a>")
-
-  # Write text
-  a6  <- knitr::knit_expand(text = paste0("cat('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;','",country,": ')"))
-  a7  <- knitr::knit_expand(text = paste0("\ncat('",link_1,"')"))
-  a8  <- knitr::knit_expand(text = paste0("\ncat('|')"))
-  a9  <- knitr::knit_expand(text = paste0("\ncat('",link_2,"')"))
-  a10 <- knitr::knit_expand(text = paste0("\ncat('|')"))
-  a11 <- knitr::knit_expand(text = paste0("\ncat('",link_3,"')"))
-  
-  
-  # End R chunk
-  a12 <- knitr::knit_expand(text = "\n```\n")
-  
-  
-  # Collapse together all lines with newline separator
-  paste(a1, a2, a3, a5, a4, a5, a6, a7, a8, a9, a10, a11, a12, collapse = '\n') 
-})
+.text-container h1 {
+  font-size: 16px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  font-weight: bold;
+  text-align: center;
+  color: #636363;
+}
 
 
-```
+@media (min-width: 1401px) {
+  .text-container {
+    width: 100%;
+  }
+}
 
-`r knitr::knit(text = paste(out, collapse = '\n'))`
+@media (max-width: 1400px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .text-container {
+    grid-column: span 1;
+  }
+}
 
+@media (max-width: 700px) {
+  .figure-container {
+    width: 100%;
+  }
+  .text-container {
+    width: 100%;
+  }
+}
 
-
-All countries
-=====================================  
-
-
-```{r all_countries, echo = FALSE, eval = TRUE,results='asis'}
-
-filenames <- list.files("results/countries/", pattern="*.svg", full.names=TRUE)
-#filenames <- filenames[1:4]
-
-out <- lapply(seq_along(filenames), function(i) {
-  
-  # Tab header, no title in tile as these are in figures
-  a1 <- knitr::knit_expand(text = "### \n")
-  
-  # Start R chunk
-  a2 <- knitr::knit_expand(text = "\n```{r, results='asis',out.width='80%',fig.align = 'center'} \n")
-  
-  # Render figure
-  #a3 <- knitr::knit_expand(text = paste0("include_graphics('",filenames[i],"')"))
-  a3  <- knitr::knit_expand(text = paste0("cat('<img src = \"",filenames[i],"\" alt=\"img\"/>' )"))
-  
-  # End R chunk
-  a4 <- knitr::knit_expand(text = "\n```\n")
-  
-  
-  # Start another R chunk
-  a5 <- knitr::knit_expand(text = "\n```{r, results='asis'} \n")
-  
-  # Include links to figure and data
-  country <- sub(".*/(.*)\\.svg", "\\1", filenames[i])
-  
-  link_1 <- "<a target=\"_blank\" href=\"https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/UNEP-Gap-Report-2024-Chapter-2-Data-Countries.xlsx\">data</a>"
-  
-  link_2 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".png")
-  link_2 <- paste0("<a target=\"_blank\" href=","\"",link_2,"\"",">png</a>")
-
-  link_3 <- paste0("https://raw.githubusercontent.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/main/results/countries/",country,".pdf")
-  link_3 <- paste0("<a target=\"_blank\" href=","\"",link_3,"\"",">pdf</a>")
-
-  
-  # Write text
-  a6  <- knitr::knit_expand(text = paste0("cat('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;','",country,": ')"))
-  a7  <- knitr::knit_expand(text = paste0("\ncat('",link_1,"')"))
-  a8  <- knitr::knit_expand(text = paste0("\ncat('|')"))
-  a9  <- knitr::knit_expand(text = paste0("\ncat('",link_2,"')"))
-  a10 <- knitr::knit_expand(text = paste0("\ncat('|')"))
-  a11 <- knitr::knit_expand(text = paste0("\ncat('",link_3,"')"))
-  
-  
-  # End R chunk
-  a12 <- knitr::knit_expand(text = "\n```\n")
-  
-  
-  # Collapse together all lines with newline separator
-  paste(a1, a2, a3, a5, a4, a5, a6, a7, a8, a9, a10, a11, a12, collapse = '\n') 
-})
+.copyright {
+  font-size: 12px;
+  text-align: center;
+}
 
 
 ```
 
-`r knitr::knit(text = paste(out, collapse = '\n'))`
+``` {=html}
 
 
-Info
-=====================================
+<div class="banner">
+<div class="title">UNEP Emissions Gap Report 2024 - Chapter 2 Figures</div>
+<div class="link"><a href="https://lambwf.github.io/">William F. Lamb</a> | 
+<a href="https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2" target="_blank">Source Code</a>
+</div>
+</div>
+<div class='grid'>
 
-### The Emissions Gap Report
+<div class="text-container">
+<p>Each year the UN Environment Programme <a href="https://www.unep.org/resources/emissions-gap-report-2024">Emissions Gap Report</a> provides an assessment of the state of progress towards the Paris Agreement. In chapter 2 of the report, we track global, national and sectoral greenhouse gas emissions trends. Here you can find a set of figures developed for the chapter.</p>
 
-This content was developed for the UN Environment Programme Emissions Gap Report 2024. The full report can be downloaded <a href="https://www.unep.org/resources/emissions-gap-report-2024">here</a>. 
+<p>The following underlying sources were used for the analysis:</p>
+<ul>
+<li>The EDGAR v9.0 database of greenhouse gas emissions (<a href="https://edgar.jrc.ec.europa.eu/report_2024">Crippa et al. 2024</a>)</li>
+<li>The Global Carbon Budget database of historic CO2 emissions (<a href="https://globalcarbonbudget.org/carbonbudget2023/">Friedlingstein et al. 2023</a>)</li>
+<li>The National GHG Inventory Database of CO2 LULUCF emissions (<a href="https://zenodo.org/records/7190601">Grassi et al. 2024</a>)</li>
+<li>The UNFCCC National Inventory Submissions (<a href="https://unfccc.int/ghg-inventories-annex-i-parties/2023">UNFCCC 2024</a>)</li>
+</ul>
 
-
-### Authors
-
-Figures and analysis are produced by <a href="https://www.mcc-berlin.net/en/about/team/lamb-william.html">William F. Lamb</a> with support from:
-
-* Minal Pathak
-* Monica Crippa
-* Diego Guizzardi
-* Giacomo Grassi
-* Glen P. Peters
-* Julia Pongratz
-* Vaibhav Chaturvedi
-
-
-### Data sources
-
-The following underlying sources are used to produce all figures:
-
-* The EDGAR v9.0 database of greenhouse gas emissions (<a href="https://edgar.jrc.ec.europa.eu/report_2024">Crippa et al. 2024</a>)
-* The Global Carbon Budget database of historic CO2 emissions (<a href="https://globalcarbonbudget.org/carbonbudget2023/">Friedlingstein et al. 2023</a>)
-* The National GHG Inventory Database of CO2 LULUCF emissions (<a href="https://zenodo.org/records/7190601">Grassi et al. 2024</a>)
-* The UNFCCC National Inventory Submissions (<a href="https://unfccc.int/ghg-inventories-annex-i-parties/2023">UNFCCC 2024</a>)
-
-Emissions are grouped into common sectors based on <a href="https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/sources/cc_sectors.xlsx">this</a> scheme. We use global warming potentials with a time horizon of 100 years (GWP100) from the <a href="https://github.com/openclimatedata/globalwarmingpotentials">IPCC AR6</a> to aggregate greenhouse gas emissions.
+<p>Please cite these sources as well as the <a href="https://scholar.google.com/scholar?cluster=12224635163938699728&hl=en&oi=scholarr">report</a> when using our figures.</p>
+</div>
 
 
+```
+
+```{r, results='asis'}
+
+filenames <- list.files("results/standard/", pattern="*.svg", full.names=TRUE)
+
+filenames <- c(
+  "results/standard/UNEP-EGR-2024-total-gas-trend.svg",
+  "results/standard/UNEP-EGR-2024-total-uncertainties.svg",
+  "results/standard/UNEP-EGR-2024-total-sector-trend.svg",
+  "results/standard/UNEP-EGR-2024-top-shares.svg",
+  "results/standard/UNEP-EGR-2024-top-trend-exLUC.svg",
+  "results/standard/UNEP-EGR-2024-top-percapita-exLUC.svg")
+
+
+for (file in filenames) {
+
+  plot <- sub(".*/(.*)\\.svg", "\\1", file)
+
+  link_data <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/", plot, ".xlsx'>data</a>")
+
+  link_png <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/", plot, ".png'>png</a>")
+
+  link_pdf <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/", plot, ".pdf'>pdf</a>")
+
+  link_svg <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/", plot, ".svg'>svg</a>")
+  
+  cat("<div class='figure-container'>")
+  cat(paste0("<img src='", file, "' alt='", plot, "' />"))
+  cat(paste0("<div class='figure-text'>", link_data, " | ", link_png, " | ", link_pdf, " | ", link_svg, "</div>"))
+  cat("</div>")
+
+}
+
+```
+
+
+``` {=html}
+
+
+<div class="text-container">
+<h1>G20 country plots</h1>
+</div>
+
+
+```
+
+
+```{r, results='asis'}
+filenames <- list.files("results/standard/countries/", pattern="*.svg", full.names=TRUE)
+
+
+for (file in filenames) {
+
+  plot <- sub(".*/(.*)\\.svg", "\\1", file)
+
+  link_data <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/", plot, ".xlsx'>data</a>")
+
+  link_png <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/", plot, ".png'>png</a>")
+
+  link_pdf <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/", plot, ".pdf'>pdf</a>")
+
+  link_svg <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/", plot, ".svg'>svg</a>")
+  
+  cat("<div class='figure-container'>")
+  cat(paste0("<img src='", file, "' alt='", plot, "' />"))
+  cat(paste0("<div class='figure-text'>", link_data, " | ", link_png, " | ", link_pdf, " | ", link_svg, "</div>"))
+  cat("</div>")
+
+}
+
+
+```
+
+</div>
+
+``` {r, results='asis'}
+
+cat(paste0("<br><footer><p class='copyright'>© ",format(Sys.Date(), "%Y")," William F. Lamb</p></footer>"))
+
+```
