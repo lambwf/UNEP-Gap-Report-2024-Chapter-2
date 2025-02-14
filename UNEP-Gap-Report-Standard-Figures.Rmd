@@ -507,7 +507,7 @@ p1 <- data_luc_diff %>% ggplot(.,aes(x=year,y=value,colour=var)) +
         legend.position = "none") +
   labs(title="Differences in net land use change (LULUCF) estimates",
        subtitle=bquote(paste("GtCO"[2], "/year")),
-       caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: GCB 2023, Grassi et al. 2024  \n⌂ Note: the bookkeeping average and inventory estimates differ due to alternative system boundary definitions")
+       caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: GCB 2023, Grassi et al. 2024  \n⌂ Note: bookkeeping and inventory estimates differ due to alternative system boundary definitions, see Grassi et al. 2023 ESSD")
   
 
 p2 <- data_luc_diff %>% 
