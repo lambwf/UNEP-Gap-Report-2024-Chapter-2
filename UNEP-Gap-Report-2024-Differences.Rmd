@@ -204,7 +204,7 @@ data_comparison <- left_join(data_comparison,rank,by=join_by(iso))
 
 ``` {r figure_changes_by_sector,fig.width=7,fig.height=4,fig.path="results/",dev=c('png','pdf')}
 
-data_changes <- data_ghg %>% 
+data_changes <- data_edgar %>% 
   filter(year %in% c(2022,2023)) %>% 
   group_by(year,sector_lv2,sector_lv2_colours) %>% 
   summarise(value=sum(value,na.rm=T)/1e9)

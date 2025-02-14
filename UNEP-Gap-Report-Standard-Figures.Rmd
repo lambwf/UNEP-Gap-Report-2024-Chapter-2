@@ -553,7 +553,6 @@ saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-total-luc-differences.xls
 
 ```
 
-
 ## Top 6 emitters
 ### Per capita emissions
 
@@ -1001,6 +1000,190 @@ writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
 writeData(wb, sheet = "data",data_top_shares %>% ungroup() %>% select(group,year,value=share) %>%  mutate(units="% of total"),colNames = T, rowNames = F)
 
 saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-top-shares.xlsx"),overwrite=T)
+
+```
+
+### Contribution to total change
+
+``` {r top6_contribution,fig.height=4,fig.width=7.5}
+
+
+## Aggregate emissions
+
+data_contribution <- data_edgar %>% 
+  group_by(iso,country,year) %>% 
+  summarise(value=sum(value,na.rm=T)/1e6) %>% 
+  filter(year %in% c(max(data_edgar$year),max(data_edgar$year)-1))
+
+
+## Aggregate EU
+
+data_contribution_eu <- data_contribution %>% 
+  left_join(.,cc_EU,by="iso") %>% 
+  filter(!is.na(EU)) %>% 
+  mutate(iso="EU27",country="European Union") %>% 
+  group_by(iso,country,year) %>% 
+  summarise(value=sum(value))
+
+data_contribution <- data_contribution %>% 
+  left_join(.,cc_EU,by="iso") %>% 
+  filter(is.na(EU)) %>% 
+  rbind(.,data_contribution_eu) %>% 
+  select(-EU)
+
+
+## Aggregate intl. transport
+
+# data_contribution <- data_contribution %>%
+#   mutate(iso=ifelse(iso=="AIR","AIRSEA",iso)) %>%
+#   mutate(iso=ifelse(iso=="SEA","AIRSEA",iso)) %>%
+#   mutate(country=ifelse(country=="Intl. Aviation","Intl. Transport",country)) %>%
+#   mutate(country=ifelse(country=="Intl. Shipping","Intl. Transport",country)) %>%
+#   group_by(iso,country,year) %>%
+#   summarise(value=sum(value,na.rm=T))
+
+
+## Join land use change
+
+data_contribution_luc <- data_gcb_luc %>% 
+  filter(country=="Global") %>% 
+  mutate(value=value/1e6)
+
+# Add the GCB projection for 2023 (https://essd.copernicus.org/articles/15/5301/2023/) and join
+
+data_contribution_luc <- data_contribution_luc %>% 
+  add_row(year=2023,value=1.1*(44/12)*1000) %>% 
+  mutate(iso="LUC",country="Land use change (LULUCF)") %>% 
+  filter(year %in% c(max(data_edgar$year),max(data_edgar$year)-1))
+
+data_contribution <- rbind(data_contribution,data_contribution_luc)
+
+
+## Include top6 by current emissions + transport + luc and aggregate rest of world
+
+data_contribution <- data_contribution %>% 
+  mutate(group=ifelse(country %in% c(high_emitters,"Intl. Transport","Land use change (LULUCF)"),1,0)) %>% 
+  mutate(iso=ifelse(group==0,"REST",iso)) %>% 
+  mutate(country=ifelse(group==0,"Rest of World",country)) %>% 
+  group_by(iso,country,year) %>% 
+  summarise(value=sum(value,na.rm=T))
+
+
+## Calculate changes and rank
+
+data_contribution <- data_contribution %>% 
+  group_by(iso) %>% 
+  mutate(change_abs=last(value)-first(value),
+         change_rel=change_abs/first(value))
+
+
+# Re-arrange order of countries so that net additions come first, net reductions last
+
+data_contribution_order <- data_contribution %>% 
+  ungroup() %>% 
+  filter(year==max(data_contribution$year)) %>% 
+  mutate(change_abs=ifelse(iso=="REST",0,change_abs)) %>% 
+  arrange(desc(change_abs)) %>% 
+  mutate(order=row_number()) %>% 
+  select(iso,order)
+
+data_contribution <- left_join(data_contribution,data_contribution_order,by=join_by(iso)) %>% 
+  arrange(order,year)
+
+
+
+# add total emissions before
+
+data_contribution <- data_contribution %>% 
+  bind_rows(.,data.frame(country="2022 Emissions",
+                         change_abs=sum(data_contribution$value[data_contribution$year==max(data_contribution$year)-1]),
+                         order=0,
+                         year=max(data_contribution$year)-1))
+
+
+
+# add total emissions after
+
+data_contribution <- data_contribution %>% 
+  bind_rows(.,data.frame(country="2023 Emissions",
+                         change_abs=sum(data_contribution$value[data_contribution$year==max(data_contribution$year,na.rm=T)],na.rm=T),
+                         order=max(data_contribution$order)+1,
+                         year=max(data_contribution$year)-1))
+
+
+data_contribution <- data_contribution  %>% 
+  filter(year==max(data_contribution$year)-1) %>%
+  arrange(order) %>% 
+  ungroup() %>% 
+  mutate(end = cumsum(change_abs),
+         start = c(0, head(end, -1))) %>% 
+  mutate(end = ifelse(order==max(data_contribution$order),change_abs,end),
+         start = ifelse(order==max(data_contribution$order),0,start))
+
+
+
+data_contribution$country <- as.factor(data_contribution$country)
+data_contribution$country <- fct_reorder(data_contribution$country,data_contribution$order)
+
+
+data_contribution <- data_contribution %>%
+  mutate(order=order+1) %>% 
+  mutate(labels=signif(change_abs,3)) %>% 
+  mutate(labels=ifelse(start!=0 & labels>0,paste0("+",labels),labels))
+
+
+
+
+plot <- data_contribution %>% ggplot(.,aes(fill = country)) +
+  geom_rect(aes(x = country,xmin = order - 0.2, xmax = order + 0.2, ymin = end, ymax = start),
+            color="#252525",linewidth=0.25) +
+  geom_segment(data=data_contribution %>% filter(order!=10),
+               aes(x = order + 0.2, xend = order + 0.8,y = end, yend = end),
+                color = "#252525",linewidth=0.25) +
+               
+  geom_text(aes(x=country,y=ifelse(change_abs>0,end+100,end+100-change_abs),label=labels),
+            color="#636363",
+            size=3.5) +
+  
+  coord_cartesian(ylim=c(56000,58000))+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 12)) +
+  scale_fill_manual(values=c(colours_top6,"Rest of World"="#9467bdff","Land use change (LULUCF)"="#4f8455ff")) +
+  theme_wl() +
+  theme(legend.position="none",
+        axis.title = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(vjust = 1),plot.title = element_text(margin=margin(t=15))) +
+  labs(title="Contributions to the change in 2023 greenhouse gas emissions",
+       subtitle=bquote(paste("MtCO"[2], "e/year")),
+       caption="⌂ UNEP Emissions Gap Report 2024   ⌂ Data: EDGARv9, GCB 2023 \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on bookkeeping conventions")
+
+
+plot
+
+
+ggsave(plot,filename = "UNEP-EGR-2024-top-contribution.png",path = "results/standard/",device = "png",height = 4,width=7.5,dpi=300)
+ggsave(plot,filename = "UNEP-EGR-2024-top-contribution.pdf",path = "results/standard/",device = cairo_pdf,height = 4,width=7.5)
+ggsave(plot,filename = "UNEP-EGR-2024-top-contribution.svg",path = "results/standard/",device = 'svg',height = 4,width=7.5)
+
+
+## Save data
+
+wb <- createWorkbook()
+addWorksheet(wb,"info")
+addWorksheet(wb,"data")
+info = data.frame(a=c("Author","Contact","Data sources","See also"),
+                  b=c("William F. Lamb",
+                      "william.lamb@pik-potsdam.de",
+                      "EDGARv9 (https://edgar.jrc.ec.europa.eu/report_2024); GCB 2023 (https://globalcarbonbudget.org/carbonbudget2023/)",
+                      "https://lambwf.github.io/UNEP-Gap-Report-2024-Chapter-2/"))
+
+writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
+writeData(wb, sheet = "data",data_contribution %>% filter(!is.na(iso)) %>% select(iso,country,change_abs) %>% mutate(units="MtCO2e"),colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-top-contribution.xlsx"),overwrite=T)
+
+
+
 
 ```
 

@@ -187,6 +187,7 @@ filenames <- c(
   "results/standard/UNEP-EGR-2024-total-uncertainties.svg",
   "results/standard/UNEP-EGR-2024-total-sector-trend.svg",
   "results/standard/UNEP-EGR-2024-total-luc-differences.svg",
+  "results/standard/UNEP-EGR-2024-top-contribution.svg",
   "results/standard/UNEP-EGR-2024-top-shares.svg",
   "results/standard/UNEP-EGR-2024-top-trend-exLUC.svg",
   "results/standard/UNEP-EGR-2024-top-percapita-exLUC.svg")
@@ -219,6 +220,7 @@ for (file in filenames) {
 
 <div class="text-container">
 <h1>G20 country plots</h1>
+<p style="text-align: center">(The data file for the plots below contains data for all countries)
 </div>
 
 
