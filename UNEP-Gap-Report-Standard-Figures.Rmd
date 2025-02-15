@@ -965,7 +965,7 @@ labels <- data_top_shares %>%
 ## Plot
 
 p1 <- data_top_shares %>% ggplot(.,aes(x=year,y=share,fill=group)) +
-  geom_col(color='#252525',linewidth=0.25) +
+  geom_col(color='#252525',linewidth=0.25,width=1) +
   theme_wl_bar_trend() +
   scale_fill_manual(values=c(colours_top6,"Rest of world" = "#818181ff","Least Developed Countries"="#9467bdff")) +
   scale_x_continuous(breaks=c(1990,2000,2010,max(data_top_shares$year)),
