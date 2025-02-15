@@ -34,6 +34,11 @@ cc_EU <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygrou
   select(iso=Code) %>% 
   mutate(EU="1")
 
+cc_LDC <- read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/refs/heads/main/data/ldc.csv") %>% 
+  select(iso=Code) %>% 
+  mutate(LDC=1)
+
+
 ## Get population data from the World Bank
 
 data_wdi_pop <- WDI(country = "all",indicator = "SP.POP.TOTL",start = 1970,end = 2023,extra=TRUE,language = "en") %>%
@@ -886,17 +891,36 @@ data_top_shares <- left_join(data_top_shares,cc_EU,by="iso") %>%
   select(-EU)
 
 
-## Get top x countries
+## Merge LDCs
+
+data_top_shares_ldcs <- left_join(data_top_shares,cc_LDC,by="iso") %>%
+  filter(!is.na(LDC)) %>% 
+  mutate(iso="LDCS") %>% 
+  select(-LDC) %>%
+  mutate(country="Least Developed Countries") %>% 
+  group_by(iso,country,year) %>% 
+  summarise(value=sum(value,na.rm=T)) %>% 
+  ungroup()
+
+data_top_shares <- left_join(data_top_shares,cc_LDC,by="iso") %>% 
+  filter(is.na(LDC)) %>% 
+  bind_rows(.,data_top_shares_ldcs) %>% 
+  select(-LDC)
+
+
+## Get top x countries + LDCs
 
 countries <- data_top_shares %>% 
   ungroup() %>% 
   filter(year==2022) %>% 
+  filter(iso!="LDCS") %>% 
   arrange(desc(value)) %>% 
   head(6) %>% 
   mutate(rank=1) %>% 
   mutate(rank=cumsum(rank)) %>% 
   mutate(group=country) %>% 
-  select(iso,group,rank)
+  select(iso,group,rank) %>% 
+  add_row(iso="LDCS",group="Least Developed Countries",rank=8)
 
 
 ## Group rest of world
@@ -940,12 +964,10 @@ labels <- data_top_shares %>%
 
 ## Plot
 
-colours_top6 <- c(colours_top6,"Rest of world" = "#818181ff")
-
 p1 <- data_top_shares %>% ggplot(.,aes(x=year,y=share,fill=group)) +
   geom_col(color='#252525',linewidth=0.25) +
   theme_wl_bar_trend() +
-  scale_fill_manual(values=colours_top6) +
+  scale_fill_manual(values=c(colours_top6,"Rest of world" = "#818181ff","Least Developed Countries"="#9467bdff")) +
   scale_x_continuous(breaks=c(1990,2000,2010,max(data_top_shares$year)),
                      expand = expansion(mult = c(0.05, 0.01))) +
   theme(axis.title = element_blank(),
@@ -957,7 +979,7 @@ p1 <- data_top_shares %>% ggplot(.,aes(x=year,y=share,fill=group)) +
 
 
 p2 <- labels %>% 
-  ggplot(.,aes(x=1,y=label_position,label=label,color=group)) +
+  ggplot(.,aes(x=1,y=label_position,label=str_wrap(label,20),color=group)) +
   geom_text_repel(
             hjust=0,
             direction = "y",
@@ -966,12 +988,13 @@ p2 <- labels %>%
             show.legend = FALSE,
             min.segment.length = Inf,
             box.padding = 0.2,
-            force = 0.1) +
+            force = 0.1,
+            lineheight=0.9) +
   annotation_custom(grob = textGrob("Share in 2022:",
                                     x = unit(0.03, "npc"), y = unit(0.91, "npc"),hjust = 0, vjust = 0,
                                     gp = gpar(col = "#636363", fontsize = 10, lineheight=0.9)),
                     xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
-  scale_colour_manual(values=colours_top6) +
+  scale_colour_manual(values=c(colours_top6,"Rest of world" = "#818181ff","Least Developed Countries"="#9467bdff")) +
   scale_y_continuous(limits = c(0,100)) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
   theme_wl_empty()
