@@ -146,19 +146,19 @@ p1 <- data_total %>% ggplot(.,aes(x=year,y=value,fill=gas)) +
   labs(title="Total net greenhouse gas emissions",
        subtitle=bquote(paste("GtCO"[2], "e/year")),
        caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGAR v9, GCB 2023  \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on bookkeeping conventions")
-  
+
 
 p2 <- data_total_change %>% 
   ggplot(.,aes(x=1,y=ifelse(gas!="CO2 Fossil",label_position-6,label_position),label=label,color=gas)) +
   geom_text_repel(
-            hjust=0,
-            direction = "y",
-            point.size = NA,
-            size=3.5,
-            show.legend = FALSE,
-            min.segment.length = Inf,
-            box.padding = 0.2,
-            force = 0.1) +
+    hjust=0,
+    direction = "y",
+    point.size = NA,
+    size=3.5,
+    show.legend = FALSE,
+    min.segment.length = Inf,
+    box.padding = 0.2,
+    force = 0.1) +
   annotation_custom(grob = textGrob("Emissions in 2023,\n1 year change:",
                                     x = unit(0.03, "npc"), y = unit(0.88, "npc"),hjust = 0, vjust = 0,
                                     gp = gpar(col = "#636363", fontsize = 10, lineheight=0.9)),
@@ -195,7 +195,7 @@ writeData(wb, sheet = "data",data_total %>% mutate(units="GtCO2e/year (GWP100 AR
 saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-total-gas-trend.xlsx"),overwrite=T)
 
 
-  
+
 ```
 
 ### Uncertainties
@@ -241,7 +241,7 @@ data_uncertainties_total <- data_uncertainties %>%
   summarise(value=sum(value,na.rm=TRUE),
             uncertainty_abs=sqrt(sum(uncertainty_abs,na.rm=TRUE))) %>% 
   mutate(gas="Total")
-  
+
 
 data_uncertainties <- data_uncertainties %>% 
   bind_rows(.,data_uncertainties_total)
@@ -303,7 +303,7 @@ writeData(wb, sheet = "data",data_uncertainties %>% mutate(units="GtCO2e/year (G
 saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-total-uncertainties.xlsx"),overwrite=T)
 
 
-  
+
 ```
 
 ### Trend by sector
@@ -407,7 +407,7 @@ p1 <- data_sectors %>% ggplot(.,aes(x=year,y=value,fill=sector_lv2)) +
   labs(title="Total net greenhouse gas emissions by sector",
        subtitle=bquote(paste("GtCO"[2], "e/year")),
        caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGAR v9, GCB 2023  \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on bookkeeping conventions")
-  
+
 
 p2 <- data_sectors_change %>% 
   ggplot(.,aes(x=1,y=label_position,label=label,color=sector_lv2)) +
@@ -503,7 +503,7 @@ p1 <- data_luc_diff %>% ggplot(.,aes(x=year,y=value,colour=var)) +
   geom_hline(yintercept=0,color="#636363",size = 0.25) +
   geom_point(data=data_luc_diff %>% 
                filter(year %in% year_higlight),
-               shape=21,fill="white") +
+             shape=21,fill="white") +
   theme_wl() +
   scale_colour_manual(values=c("#7dd396ff","#4f8455ff","#3a5e91ff","#5185b5ff","#74a6d4ff")) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.01))) +
@@ -513,7 +513,7 @@ p1 <- data_luc_diff %>% ggplot(.,aes(x=year,y=value,colour=var)) +
   labs(title="Differences in net land use change (LULUCF) estimates",
        subtitle=bquote(paste("GtCO"[2], "/year")),
        caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: GCB 2023, Grassi et al. 2024  \n⌂ Note: bookkeeping and inventory estimates differ due to alternative system boundary definitions, see Grassi et al. 2023 ESSD")
-  
+
 
 p2 <- data_luc_diff %>% 
   filter(year==max(data_luc_diff$year)) %>% 
@@ -572,7 +572,7 @@ data_percap <- data_edgar %>%
 
 
 ## Join population and calculate per capita emissions, filter out NAs
-  
+
 data_percap <- data_percap %>% 
   left_join(.,data_wdi_pop %>% select(iso,year,population),by=join_by("iso","year")) %>% 
   mutate(ghg_pc=value/population) %>% 
@@ -647,7 +647,7 @@ p1 <- data_percap %>%
   labs(title="Per capita greenhouse gas emissions of the top six emitters",
        subtitle=bquote(paste("tCO"[2], "e/capita/year")),
        caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGAR v9, World Bank  \n⌂ Note: GWP100 AR6; land use change (LULUCF) emissions and removals excluded")
-  
+
 p2 <- data_percap %>% 
   filter(country %in% high_emitters) %>% 
   ggplot(.,aes(x=year,y=ghg_pc,colour=country)) +
@@ -656,7 +656,7 @@ p2 <- data_percap %>%
   geom_point(data=data_percap %>% 
                filter(country %in% high_emitters) %>% 
                filter(year %in% year_higlight),
-               shape=21,fill="white") +
+             shape=21,fill="white") +
   scale_x_continuous(breaks = c(1990,2000,2010,2023)) +
   theme_wl() +
   scale_colour_manual(values=colours_top6) +
@@ -668,12 +668,12 @@ p3 <- data_percap_change %>%
   filter(country %in% high_emitters) %>% 
   ggplot(.,aes(x=1,y=ghg_pc,label=change,color=country)) +
   geom_text_repel(
-            hjust=0,
-            direction = "y",
-            point.size = NA,
-            size=3.5,
-            show.legend = FALSE,
-            min.segment.length = Inf) +
+    hjust=0,
+    direction = "y",
+    point.size = NA,
+    size=3.5,
+    show.legend = FALSE,
+    min.segment.length = Inf) +
   annotation_custom(grob = textGrob(str_wrap("3 year change:",10), x = unit(0.1, "npc"), y = unit(0.9, "npc"),hjust = 0, vjust = 0,
                                     gp = gpar(col = "#636363", fontsize = 10, lineheight=0.8)),
                     xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
@@ -785,7 +785,7 @@ p1 <- data_trend %>%
   labs(title="Greenhouse gas emissions of the top six emitters",
        subtitle=bquote(paste("MtCO"[2], "e/year")),
        caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGAR v9, World Bank  \n⌂ Note: GWP100 AR6; land use change (LULUCF) emissions and removals excluded")
-  
+
 p2 <- data_trend %>% 
   filter(country %in% high_emitters) %>% 
   ggplot(.,aes(x=year,y=ghg,colour=country)) +
@@ -794,7 +794,7 @@ p2 <- data_trend %>%
   geom_point(data=data_trend %>% 
                filter(country %in% high_emitters) %>% 
                filter(year %in% year_higlight),
-               shape=21,fill="white") +
+             shape=21,fill="white") +
   scale_x_continuous(breaks = c(1990,2000,2010,2023)) +
   scale_y_continuous(limits = c(0,19000)) +
   theme_wl() +
@@ -807,12 +807,12 @@ p3 <- data_trend_change %>%
   filter(country %in% high_emitters) %>% 
   ggplot(.,aes(x=1,y=ghg,label=change,color=country)) +
   geom_text_repel(
-            hjust=0,
-            direction = "y",
-            point.size = NA,
-            size=3.5,
-            show.legend = FALSE,
-            min.segment.length = Inf) +
+    hjust=0,
+    direction = "y",
+    point.size = NA,
+    size=3.5,
+    show.legend = FALSE,
+    min.segment.length = Inf) +
   annotation_custom(grob = textGrob(str_wrap("3 year change:",10), x = unit(0.1, "npc"), y = unit(0.9, "npc"),hjust = 0, vjust = 0,
                                     gp = gpar(col = "#636363", fontsize = 10, lineheight=0.8)),
                     xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
@@ -981,15 +981,15 @@ p1 <- data_top_shares %>% ggplot(.,aes(x=year,y=share,fill=group)) +
 p2 <- labels %>% 
   ggplot(.,aes(x=1,y=label_position,label=str_wrap(label,20),color=group)) +
   geom_text_repel(
-            hjust=0,
-            direction = "y",
-            point.size = NA,
-            size=3.5,
-            show.legend = FALSE,
-            min.segment.length = Inf,
-            box.padding = 0.2,
-            force = 0.1,
-            lineheight=0.9) +
+    hjust=0,
+    direction = "y",
+    point.size = NA,
+    size=3.5,
+    show.legend = FALSE,
+    min.segment.length = Inf,
+    box.padding = 0.2,
+    force = 0.1,
+    lineheight=0.9) +
   annotation_custom(grob = textGrob("Share in 2022:",
                                     x = unit(0.03, "npc"), y = unit(0.91, "npc"),hjust = 0, vjust = 0,
                                     gp = gpar(col = "#636363", fontsize = 10, lineheight=0.9)),
@@ -1162,8 +1162,8 @@ plot <- data_contribution %>% ggplot(.,aes(fill = country)) +
             color="#252525",linewidth=0.25) +
   geom_segment(data=data_contribution %>% filter(order!=10),
                aes(x = order + 0.2, xend = order + 0.8,y = end, yend = end),
-                color = "#252525",linewidth=0.25) +
-               
+               color = "#252525",linewidth=0.25) +
+  
   geom_text(aes(x=country,y=ifelse(change_abs>0,end+100,end+100-change_abs),label=labels),
             color="#636363",
             size=3.5) +
@@ -1211,8 +1211,9 @@ saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-top-contribution.xlsx"),o
 ```
 
 ## Country plots
+### Trend by sector
 
-``` {r countries, fig.height=4, fig.width=8}
+``` {r countries_trend, fig.height=4, fig.width=8}
 
 ## Aggregate emissions
 
@@ -1277,7 +1278,7 @@ data_countries <- data_countries %>%
 ##
 
 plot_country <- function(countries,data_countries) {
-
+  
   data_countries <- data_countries %>% 
     filter(country==countries)
   
@@ -1316,8 +1317,8 @@ plot_country <- function(countries,data_countries) {
     labs(title=countries,
          subtitle=bquote(paste("MtCO"[2], "e/year")),
          caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGAR v9, Grassi et al. 2024  \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on inventories")
-
-
+  
+  
   return(plot)
   
 }
@@ -1341,14 +1342,14 @@ countries <- c(countries$country,"European Union")
 for (i in 1:length(countries)){
   
   plot <- plot_country(countries[i],data_countries)
-
-  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-trend.png"),
+  
+  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-atrend.png"),
          path = "results/standard/countries/",device = "png",height = 4,width=8,dpi=300)
-  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-trend.pdf"),
+  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-atrend.pdf"),
          path = "results/standard/countries/",device = cairo_pdf,height = 4,width=8)
-  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-trend.svg"),
+  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-atrend.svg"),
          path = "results/standard/countries/",device = 'svg',height = 4,width=8)
-
+  
 }
 
 
@@ -1366,8 +1367,257 @@ info = data.frame(a=c("Author","Contact","Data sources","See also"),
 writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
 writeData(wb, sheet = "data",data_countries %>% select(-sector_lv2_order) %>% mutate(units="MtCO2e/year (GWP100 AR6)"),colNames = T, rowNames = F)
 
-saveWorkbook(wb,paste0("results/standard/countries/UNEP-EGR-2024-countries.xlsx"),overwrite=T)
+saveWorkbook(wb,paste0("results/standard/countries/UNEP-EGR-2024-country-trend.xlsx"),overwrite=T)
 
 
 
 ```
+
+### Changes by sector
+
+``` {r countries_changes,fig.height=4,fig.width=8}
+
+## Aggregate emissions
+
+data_countries_change <- data_edgar %>% 
+  group_by(iso,country,sector_lv2,year) %>% 
+  summarise(value=sum(value,na.rm=T)/1e6)
+
+
+## Add land use change emissions
+
+data_countries_luc <- read.xlsx('sources/not public/LULUCF NGHGI data for UNEP 2024.xlsx',startRow = 3) %>% 
+  rename(category=LAND.CATEGORY,country=UNFCCC.country,iso=country.code) %>% 
+  filter(category=="LULUCF net")
+
+data_countries_luc <- gather(data_countries_luc,year,`Land use change (LULUCF)`,`2000`:`2023`) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(!is.na(iso)) %>% 
+  select(iso,year,`Land use change (LULUCF)`)
+
+data_countries_change <- data_countries_change %>% 
+  spread(.,sector_lv2,value) %>% 
+  left_join(.,data_countries_luc,by=join_by(iso,year)) %>% 
+  gather(.,sector_lv2,value,-iso,-country,-year)
+
+
+## Add Europe
+
+data_countries_eu <- data_countries_change %>% 
+  left_join(.,cc_EU,by="iso") %>% 
+  filter(!is.na(EU)) %>% 
+  mutate(iso="EU27",country="European Union") %>% 
+  group_by(iso,country,sector_lv2,year) %>% 
+  summarise(value=sum(value))
+
+data_countries_change <- rbind(data_countries_change,data_countries_eu)
+
+
+## Plot
+
+plot_country_change <- function(countries,t,data_countries_change) {
+  
+  ## Filter
+  
+  data_countries_change <- data_countries_change %>% 
+    filter(country==countries) %>% 
+    filter(year %in% c(max(data_countries_change$year),max(data_countries_change$year)-t))
+  
+  
+  ## Calculate changes and rank
+  
+  data_countries_change <- data_countries_change %>% 
+    group_by(sector_lv2) %>% 
+    mutate(change_abs=last(value)-first(value),
+           change_rel=change_abs/first(value))
+  
+  
+  # Re-arrange order of sectors so that net additions come first, net reductions last
+  
+  data_countries_change_order <- data_countries_change %>% 
+    ungroup() %>% 
+    filter(year==max(data_countries_change$year)) %>% 
+    arrange(desc(change_abs)) %>% 
+    mutate(order=row_number()) %>% 
+    select(sector_lv2,order)
+  
+  data_countries_change <- left_join(data_countries_change,data_countries_change_order,by=join_by(sector_lv2)) %>% 
+    arrange(order,year)
+  
+  
+  ## Get totals
+  
+  data_countries_change_tot <- data_countries_change %>% 
+    group_by(year) %>% 
+    summarise(value=sum(value,na.rm=T)) %>% 
+    mutate(label=paste0("Emissions in ",year,": ",signif(value,3)))
+  
+  
+  ## Arrange data for waterfall
+  
+  data_countries_change <- data_countries_change  %>% 
+    ungroup() %>% 
+    filter(year==max(data_countries_change$year)-t) %>%
+    add_row(order=0,change_abs=data_countries_change_tot$value[1]) %>% 
+    arrange(order) %>% 
+    ungroup() %>%
+    mutate(end = cumsum(change_abs),
+           start = c(0, head(end, -1))) %>% 
+    filter(order!=0)
+  
+  
+  ## Arrange levels, add labels
+  data_countries_change$sector_lv2 <- gsub("\\| ","",data_countries_change$sector_lv2)
+  data_countries_change$sector_lv2 <- as.factor(data_countries_change$sector_lv2)
+  data_countries_change$sector_lv2 <- fct_reorder(data_countries_change$sector_lv2,data_countries_change$order)
+  colours_custom <- c(
+    "Energy Power" = "#17becfff",
+    "Energy Industry" = "#3a5e91ff",
+    "Energy Transport" = "#5185b5ff",
+    "Energy Buildings & other" = "#74a6d4ff",
+    "Energy Fuel production" = "#ff9055ff",
+    "Industrial processes" = "#e5b82cff",
+    "Agriculture" = "#4f8455ff",
+    "Land use change (LULUCF)" = "#7dd396ff",
+    "Waste" = "#818181ff")
+  
+  
+  data_countries_change <- data_countries_change %>%
+    mutate(labels=signif(change_abs,t)) %>% 
+    mutate(labels=ifelse(labels>0,paste0("+",labels),labels))
+  
+  
+  ## Plot
+  
+  
+  p1 <- data_countries_change %>% 
+    ggplot(.,aes(fill = sector_lv2)) +
+    geom_rect(aes(x = sector_lv2,xmin = order - 0.2, xmax = order + 0.2, ymin = end, ymax = start),
+              color="#252525",linewidth=0.25) +
+    geom_segment(data=data_countries_change %>% filter(order!=max(data_countries_change$order)),
+                 aes(x = order + 0.2, xend = order + 0.8,y = end, yend = end),
+                 color = "#252525",linewidth=0.25) +
+    
+    # geom_text(aes(x=sector_lv2,y=ifelse(change_abs>0,end+100,end+100-change_abs),label=labels),
+    #           color="#636363",
+    #           size=3.5) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 10),expand = expansion(mult = c(0.05, 0.05))) +
+    scale_y_continuous(breaks=data_countries_change_tot$value) +
+    scale_fill_manual(values=colours_custom) +
+    theme_wl() +
+    theme(legend.position="none",
+          axis.title = element_blank(),
+          panel.grid.major.x = element_blank(),
+          axis.text.x = element_text(vjust = 1),
+          plot.title = element_text(margin=margin(t=15)),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank()) +
+          # panel.grid.major.y = element_blank(),
+          # axis.ticks.y = element_blank(),
+          # axis.line.y = element_blank()) +
+    labs(title=countries,
+         subtitle=bquote(paste("Change in recent emissions (MtCO"[2], "e)")),
+         caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGARv9, Grassi et al. 2024 \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on inventories") +
+    coord_cartesian(clip = "off")
+  
+  
+  y_range_scaling <- layer_scales(p1)$y$range$range
+  y_range_scaling <- diff(y_range_scaling) * 0.08
+  
+  
+  p1 <- p1 +
+    geom_text(aes(x=sector_lv2,y=ifelse(change_abs>0,end+y_range_scaling,end+y_range_scaling-change_abs),label=labels),
+              color="#636363",
+              size=3.5)
+  
+  y_range_scaling_2 <- layer_scales(p1)$y$range$range
+  y_range_expanded <- y_range_scaling_2 + c(-0.001 * diff(y_range_scaling_2),0.001 * diff(y_range_scaling_2))
+  
+  p2 <- data_countries_change_tot %>%
+    filter(year==2023) %>% 
+    ggplot(.,aes(x=1.5,y=value,label=str_wrap(label,15))) +
+    geom_text(size=3.5,colour="#636363",hjust=0) +
+    geom_segment(aes(x = 1.4, xend = 1, yend = value),
+                 arrow = arrow(length = unit(0.2, "cm")),
+                 colour = "#636363") +
+    scale_y_continuous(limits = y_range_expanded) +
+    scale_x_continuous(limits = c(1,4.5),expand = expansion(mult = c(0, 0.05))) +
+    theme_wl_empty() +
+    coord_cartesian(clip = "off")
+  
+  p3 <- data_countries_change_tot %>%
+    filter(year==2020) %>% 
+    ggplot(.,aes(x=4,y=value,label=str_wrap(label,15))) +
+    geom_text(size=3.5,colour="#636363",hjust=1) +
+    geom_segment(aes(x = 4.1, xend = 4.5, yend = value),
+                 arrow = arrow(length = unit(0.2, "cm")),
+                 colour = "#636363") +
+    scale_y_continuous(limits = y_range_expanded) +
+    scale_x_continuous(limits = c(1,4.5),expand = expansion(mult = c(0.05, 0))) +
+    theme_wl_empty() +
+    coord_cartesian(clip = "off")
+  
+  
+  plot <- plot_spacer() + p3 + plot_spacer() + p1 + plot_spacer() + p2 + plot_layout(widths=c(-0.26,1,-0.26,6,-0.26,1))
+  plot
+  
+  
+  
+  return(plot)
+}
+
+
+plot_country_change("European Union",3,data_countries_change)
+
+
+## Filter to G20 countries
+
+countries <- data_countries_change %>%
+  select(iso,country) %>%
+  distinct() %>%
+  left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>%
+              select(iso=Code) %>%
+              mutate(G20="1")) %>%
+  filter(G20==1)
+
+countries <- c(countries$country,"European Union")
+
+
+for (i in 1:length(countries)){
+
+  plot <- plot_country_change(countries[i],3,data_countries_change)
+
+  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-change.png"),
+         path = "results/standard/countries/",device = "png",height = 4,width=8,dpi=300)
+  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-change.pdf"),
+         path = "results/standard/countries/",device = cairo_pdf,height = 4,width=8)
+  ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-change.svg"),
+         path = "results/standard/countries/",device = 'svg',height = 4,width=8)
+
+}
+
+
+## Save data
+
+wb <- createWorkbook()
+addWorksheet(wb,"info")
+addWorksheet(wb,"data")
+info = data.frame(a=c("Author","Contact","Data sources","See also"),
+                  b=c("William F. Lamb",
+                      "william.lamb@pik-potsdam.de",
+                      "EDGARv9 (https://edgar.jrc.ec.europa.eu/report_2024); Grassi et al. 2024 (https://zenodo.org/records/7190601)",
+                      "https://lambwf.github.io/UNEP-Gap-Report-2024-Chapter-2/"))
+
+writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
+writeData(wb, sheet = "data",data_countries_change %>% 
+            filter(year %in% c(max(data_countries_change$year),max(data_countries_change$year)-3)) %>%
+            mutate(units="MtCO2e (GWP100 AR6)") %>% 
+            arrange(iso,country,year,sector_lv2),colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/standard/countries/UNEP-EGR-2024-country-change.xlsx"),overwrite=T)
+
+
+
+
+```
+

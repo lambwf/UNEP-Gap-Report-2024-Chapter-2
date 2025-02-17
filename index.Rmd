@@ -235,7 +235,9 @@ for (file in filenames) {
 
   plot <- sub(".*/(.*)\\.svg", "\\1", file)
 
-  link_data <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/UNEP-EGR-2024-countries.xlsx'>data</a>")
+  link_data <- ifelse(grepl("atrend",file),
+                            paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/UNEP-EGR-2024-country-trend.xlsx'>data</a>"),
+                            paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/UNEP-EGR-2024-country-change.xlsx'>data</a>"))
 
   link_png <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/", plot, ".png'>png</a>")
 
