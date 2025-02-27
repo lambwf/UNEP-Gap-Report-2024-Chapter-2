@@ -151,7 +151,7 @@ data_gcb_luc <- load_gcb_countries_luc(
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4))
 
 data_gcb_luc <- data_gcb_luc %>% 
-  filter(year>=1970) %>% 
+  #filter(year>=1970) %>% 
   #filter(country=="Global") %>% 
   select(iso,country,year,value=mean) %>% 
   mutate(year=as.numeric(year)) %>% 
@@ -161,11 +161,26 @@ data_gcb_luc <- data_gcb_luc %>%
 save(data_gcb_luc,file="data/data_gcb_luc.RData")
 
 
+##########
 
+# Global Carbon Project CO2 FFI (https://globalcarbonbudget.org/carbonbudget2023/)
 
+data_gcb_co2_ffi <- load_gcb_countries_ffi(read.xlsx("sources/National_Fossil_Carbon_Emissions_2023v1.0.xlsx",sheet=2,startRow = 12))
 
+### consistent names
 
+newnames <- data_gcb_co2_ffi %>% 
+  ungroup() %>% 
+  select(iso) %>% 
+  distinct() %>% 
+  mutate(newname=countrycode(iso,"iso3c","country.name"))
 
+data_gcb_co2_ffi <- data_gcb_co2_ffi %>% 
+  left_join(.,newnames,by="iso") %>% 
+  mutate(country=newname) %>% 
+  select(-newname)
+
+save(data_gcb_co2_ffi,file="data/data_gcb_co2_ffi.RData")
 
 
 
