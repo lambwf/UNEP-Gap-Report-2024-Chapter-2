@@ -1,7 +1,6 @@
 ---
 title: "UNEP-Gap-Report-Standard-Figures"
 author: "William F. Lamb"
-date: "2025-02-10"
 output: html_document
 ---
 
@@ -1735,7 +1734,7 @@ plot_country_change <- function(countries,t,data_countries_change) {
   
   
   data_countries_change <- data_countries_change %>%
-    mutate(labels=signif(change_abs,t)) %>% 
+    mutate(labels=signif(change_abs,3)) %>% 
     mutate(labels=ifelse(labels>0,paste0("+",labels),labels))
   
   
