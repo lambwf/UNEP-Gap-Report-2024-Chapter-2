@@ -462,7 +462,7 @@ data_luc_diff <- load_gcb_countries_luc(
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=3),
   readxl::read_xlsx('sources/National_LandUseChange_Carbon_Emissions_2023v1.0.xlsx',range="A8:GT182",sheet=4)) %>% 
   filter(country=="Global") %>% 
-  rename(`Bookkeeping | BLUE`=blue,`Bookkeeping | H&N`=hn,`Bookkeeping | OSCAR`=oscar,`Bookkeeping | average`=mean) %>% 
+  rename(BLUE=blue,`H&N`=hn,OSCAR=oscar,`Bookkeeping average`=mean) %>% 
   select(-country,-iso)
 
 
@@ -511,6 +511,14 @@ data_luc_diff <- data_luc_diff %>%
   rbind(.,data_fao)
 
 
+## Get minmax of the bookkeeping data
+
+data_luc_minmax <- data_luc_diff %>% 
+  filter(grepl("H&N",var) | grepl("BLUE",var) | grepl("OSCAR",var)) %>% 
+  group_by(year) %>% 
+  summarise(min=min(value),max=max(value))
+
+
 ## Create sequence in 5 year intervals for plotting dots
 
 year_higlight <- seq(1990, max(data_luc_diff$year), by = 5)
@@ -522,7 +530,7 @@ if (!max(data_luc_diff$year) %in% year_higlight) {
 
 labels <- data_luc_diff %>% 
   filter(year>=max(data_luc_diff$year)-9) %>% 
-  filter(var %in% c("Bookkeeping | average","Inventories")) %>%
+  filter(var %in% c("Bookkeeping average","Inventories")) %>%
   group_by(var) %>% 
   summarise(value_end=last(value),value=mean(value)) %>% 
   mutate(year=paste0(max(data_luc_diff$year)-9,"-",max(data_luc_diff$year))) %>% 
@@ -531,16 +539,18 @@ labels <- data_luc_diff %>%
 
 
 data_luc_diff$var <- as.factor(data_luc_diff$var)
-data_luc_diff$var <- fct_relevel(data_luc_diff$var,"Inventories","Bookkeeping | average","Bookkeeping | BLUE","Bookkeeping | H&N","Bookkeeping | OSCAR","FAO")
+data_luc_diff$var <- fct_relevel(data_luc_diff$var,"Inventories","Bookkeeping average","BLUE","H&N","OSCAR","FAO")
+
 
 p1 <- data_luc_diff %>% ggplot(.,aes(x=year,y=value,colour=var)) +
+  geom_ribbon(data=data_luc_minmax,inherit.aes = FALSE,aes(x=year,ymin=min,ymax=max),fill="#74a6d4ff",alpha=0.25) +
   geom_path(size=1,fill="none") +
   geom_hline(yintercept=0,color="#636363",size = 0.25) +
   geom_point(data=data_luc_diff %>% 
                filter(year %in% year_higlight),
              shape=21,fill="white") +
   theme_wl() +
-  scale_colour_manual(values=c("#7dd396ff","#17becfff","#3a5e91ff","#5185b5ff","#74a6d4ff","#4f8455ff")) +
+  scale_colour_manual(values=c("#7dd396ff","#3a5e91ff","#74a6d4ff","#74a6d4ff","#74a6d4ff","#4f8455ff")) +
   scale_x_continuous(expand = expansion(mult = c(0.05, 0.01))) +
   scale_y_continuous(breaks =c(-2,0,2,4,6,8)) +
   theme(axis.title = element_blank(),
@@ -549,17 +559,16 @@ p1 <- data_luc_diff %>% ggplot(.,aes(x=year,y=value,colour=var)) +
        subtitle=bquote(paste("GtCO"[2], "/year")),
        caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: GCB 2023, FAO 2024, Grassi et al. 2024  \n⌂ Note: bookkeeping and inventory estimates differ due to alternative system boundary definitions, see Grassi et al. 2023 ESSD")
 
-
 p2 <- data_luc_diff %>% 
   filter(year==max(data_luc_diff$year)) %>% 
-  mutate(value=ifelse(var=="Bookkeeping | OSCAR",value+0.4,value)) %>% 
+  mutate(value=ifelse(var=="OSCAR",value+0.4,value)) %>% 
   ggplot(.) +
   geom_segment(aes(x=3.9,xend=3.9,y=labels$value_end[1],yend=labels$value_end[2]),color="#636363",size = 0.25) +
   geom_segment(aes(x=3.75,xend=3.9,y=labels$value_end[1],yend=labels$value_end[1]),color="#636363",size = 0.25) +
   geom_segment(aes(x=3.75,xend=3.9,y=labels$value_end[2],yend=labels$value_end[2]),color="#636363",size = 0.25) +
   annotate("text",x=4,y=sum(labels$value_end),label=str_wrap(paste0("10 year avg. difference: ",signif(labels$difference,2), " Gt"),20),hjust=0,vjust=1,size=3.5,colour="#636363") +
   geom_text(aes(x=1,y=value,label=var,colour=var),hjust=0,size=3.5) +
-  scale_colour_manual(values=c("#7dd396ff","#17becfff","#3a5e91ff","#5185b5ff","#74a6d4ff","#4f8455ff")) +
+  scale_colour_manual(values=c("#7dd396ff","#3a5e91ff","#74a6d4ff","#74a6d4ff","#74a6d4ff","#4f8455ff")) +
   scale_y_continuous(limits = layer_scales(p1)$y$range$range) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.01)),limits=c(1,6)) +
   theme_wl_empty() +
