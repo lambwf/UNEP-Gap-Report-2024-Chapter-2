@@ -189,6 +189,7 @@ filenames <- c(
   "results/standard/UNEP-EGR-2024-total-luc-differences.svg",
   "results/standard/UNEP-EGR-2024-top-contribution.svg",
   "results/standard/UNEP-EGR-2024-top-shares.svg",
+  "results/standard/UNEP-EGR-2024-G20-shares.svg",
   "results/standard/UNEP-EGR-2024-top-trend-exLUC.svg",
   "results/standard/UNEP-EGR-2024-top-percapita-exLUC.svg")
 

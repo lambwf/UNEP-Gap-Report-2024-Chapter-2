@@ -892,7 +892,8 @@ writeData(wb, sheet = "data",data_trend %>% select(iso,country,year,value=ghg) %
 saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-top-trend-exLUC.xlsx"),overwrite=T)
 
 ```
-### Shares of annual total
+
+### Shares of annual total (top emitters)
 
 ``` {r top_emitter_shares, fig.height = 4, fig.width = 7}
 
@@ -1067,6 +1068,186 @@ writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
 writeData(wb, sheet = "data",data_top_shares %>% ungroup() %>% select(group,year,value=share) %>%  mutate(units="% of total"),colNames = T, rowNames = F)
 
 saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-top-shares.xlsx"),overwrite=T)
+
+```
+
+### Shares of annual total (G20)
+
+``` {r top_emitter_shares, fig.height = 4, fig.width = 7}
+
+## Aggregate emissions data
+
+data_top_shares <- data_edgar %>% 
+  filter(year>=1990) %>% 
+  filter(year<=2022) %>% 
+  group_by(iso,country,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE))
+
+
+## Join land use change (LULUCF) emissions from GCB
+
+data_top_shares <- data_top_shares %>% 
+  left_join(.,data_gcb_luc %>% select(iso,year,value_luc=value),
+            by = join_by(iso, year)) %>% 
+  rowwise() %>% 
+  mutate(value = sum(value, value_luc, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  select(-value_luc)
+
+data_top_shares <- data_top_shares %>% 
+  mutate(value=value/1e9)
+
+## Join EU
+
+data_top_shares_eu <- left_join(data_top_shares,cc_EU,by="iso") %>%
+  filter(!is.na(EU)) %>% 
+  mutate(iso="EU27") %>% 
+  select(-EU) %>%
+  mutate(country="European Union") %>% 
+  group_by(iso,country,year) %>% 
+  summarise(value=sum(value,na.rm=T)) %>% 
+  ungroup()
+
+data_top_shares <- left_join(data_top_shares,cc_EU,by="iso") %>% 
+  filter(is.na(EU)) %>% 
+  bind_rows(.,data_top_shares_eu) %>% 
+  select(-EU)
+
+
+# ## Merge LDCs
+# 
+# data_top_shares_ldcs <- left_join(data_top_shares,cc_LDC,by="iso") %>%
+#   filter(!is.na(LDC)) %>% 
+#   mutate(iso="LDCS") %>% 
+#   select(-LDC) %>%
+#   mutate(country="Least Developed Countries") %>% 
+#   group_by(iso,country,year) %>% 
+#   summarise(value=sum(value,na.rm=T)) %>% 
+#   ungroup()
+# 
+# data_top_shares <- left_join(data_top_shares,cc_LDC,by="iso") %>% 
+#   filter(is.na(LDC)) %>% 
+#   bind_rows(.,data_top_shares_ldcs) %>% 
+#   select(-LDC)
+
+
+## Get G20 and Annex I
+
+data_top_shares <- data_top_shares %>% 
+  left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>%
+              select(iso=Code) %>% 
+              mutate(G20="1")) %>% 
+  left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/annex-one.csv") %>%
+              select(iso=Code) %>% 
+              mutate(AnnexI="1")) %>% 
+  mutate(G20=ifelse(iso=="EU27","1",G20)) %>% 
+  mutate(AnnexI=ifelse(iso=="EU27","1",AnnexI))
+
+
+## Get top x countries + LDCs
+
+data_top_shares <- data_top_shares %>% 
+  mutate(group=ifelse(G20=="1" & AnnexI=="1","G20 (Annex I)",NA)) %>% 
+  mutate(group=ifelse(G20=="1" & is.na(AnnexI),"G20 (non-Annex I)",group)) %>% 
+  mutate(group=ifelse(is.na(G20),"Non-G20",group))
+
+
+## Group 
+
+data_top_shares <- data_top_shares %>% 
+  group_by(group,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE))
+
+
+## Arrange factor levels
+
+data_top_shares$group <- as.factor(data_top_shares$group)
+#data_top_shares$group <- fct_reorder(data_top_shares$group)
+#data_top_shares <- data_top_shares %>% arrange(group)
+
+
+## Calculate shares
+
+data_top_shares <- data_top_shares %>% 
+  left_join(.,data_top_shares %>% 
+              group_by(year) %>% 
+              summarise(total=sum(value,na.rm=T)),by="year") %>% 
+  mutate(share=100*(value/total))
+
+
+## Calculate label positions
+
+labels <- data_top_shares %>% 
+  filter(year==2022) %>% 
+  ungroup() %>% 
+  arrange(desc(group)) %>% 
+  mutate(label_position=share) %>%
+  mutate(label_position=cumsum(label_position)) %>% 
+  mutate(label_position=label_position-(share/2)) %>% 
+  mutate(label=paste0(group," ",round(share),"%"))
+
+
+## Plot
+
+p1 <- data_top_shares %>% ggplot(.,aes(x=year,y=share,fill=group)) +
+  geom_col(color='#252525',linewidth=0.25,width=1) +
+  theme_wl_bar_trend() +
+  scale_fill_manual(values=c("G20 (Annex I)" = "#659cccff","G20 (non-Annex I)" = "#17becfff","Non-G20"="#ff9055ff")) +
+  scale_x_continuous(breaks=c(1990,2000,2010,max(data_top_shares$year)),
+                     expand = expansion(mult = c(0.05, 0.01))) +
+  theme(axis.title = element_blank(),
+        legend.position = "none") +
+  labs(title="Share of total greenhouse gas emissions",
+       subtitle=expression("%"),
+       caption="⌂ UNEP Emissions Gap Report 2024   ⌂ Data: EDGARv9, GCB 2023 \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on bookkeeping conventions; \nG20 excludes the African Union")
+
+
+p2 <- labels %>% 
+  ggplot(.,aes(x=1,y=label_position,label=str_wrap(label,21),color=group)) +
+  geom_text_repel(
+    hjust=0,
+    direction = "y",
+    point.size = NA,
+    size=3.5,
+    show.legend = FALSE,
+    min.segment.length = Inf,
+    box.padding = 0.2,
+    force = 0.1,
+    lineheight=0.9) +
+  annotation_custom(grob = textGrob("Share in 2022:",
+                                    x = unit(0.03, "npc"), y = unit(0.91, "npc"),hjust = 0, vjust = 0,
+                                    gp = gpar(col = "#636363", fontsize = 10, lineheight=0.9)),
+                    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
+  scale_colour_manual(values=c("G20 (Annex I)" = "#659cccff","G20 (non-Annex I)" = "#17becfff","Non-G20"="#ff9055ff")) +
+  scale_y_continuous(limits = c(0,100)) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
+  theme_wl_empty()
+
+plot <- p1 + p2 + plot_layout(widths=c(5,1.5))
+plot
+
+
+ggsave(plot,filename = "UNEP-EGR-2024-G20-shares.png",path = "results/standard/",device = "png",height = 4,width=8,dpi=300)
+ggsave(plot,filename = "UNEP-EGR-2024-G20-shares.pdf",path = "results/standard/",device = cairo_pdf,height = 4,width=8)
+ggsave(plot,filename = "UNEP-EGR-2024-G20-shares.svg",path = "results/standard/",device = 'svg',height = 4,width=8)
+
+
+## Save data
+
+wb <- createWorkbook()
+addWorksheet(wb,"info")
+addWorksheet(wb,"data")
+info = data.frame(a=c("Author","Contact","Data sources","See also"),
+                  b=c("William F. Lamb",
+                      "william.lamb@pik-potsdam.de",
+                      "EDGARv9 (https://edgar.jrc.ec.europa.eu/report_2024); GCB 2023 (https://globalcarbonbudget.org/carbonbudget2023/)",
+                      "https://lambwf.github.io/UNEP-Gap-Report-2024-Chapter-2/"))
+
+writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
+# writeData(wb, sheet = "data",data_top_shares %>% ungroup() %>% select(group,year,value=share) %>%  mutate(units="% of total"),colNames = T, rowNames = F)
+writeData(wb, sheet = "data",data_top_shares,colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-G20-shares.xlsx"),overwrite=T)
 
 ```
 
