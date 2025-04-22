@@ -470,11 +470,11 @@ data_luc_diff <- load_gcb_countries_luc(
 
 data_luc_inv <- read.xlsx('sources/not public/LULUCF NGHGI data for UNEP 2024.xlsx',startRow = 3) %>% 
   rename(category=LAND.CATEGORY,country=UNFCCC.country,iso=country.code)
-data_luc_inv <- gather(data_luc_inv,year,Inventories,`2000`:`2023`) %>% 
+data_luc_inv <- gather(data_luc_inv,year,value,`2000`:`2023`) %>% 
   filter(category=="LULUCF net") %>% 
   filter(country=="World") %>% 
-  mutate(Inventories=Inventories/1000) %>% 
-  select(year,Inventories)
+  mutate(value=value/1000) %>% 
+  select(year,`Grassi NGHGI (inventories)`=value)
 
 data_luc_diff <- data_luc_diff %>% 
   left_join(.,data_luc_inv,by=join_by(year)) %>% 
@@ -503,7 +503,7 @@ data_fao <- data_fao %>%
   filter(year!=2050) %>% 
   mutate(year=as.numeric(year)) %>% 
   mutate(value=value/1e6) %>%
-  mutate(var="FAO") %>% 
+  mutate(var="FAOSTAT") %>% 
   mutate(units="GtCO2/year") %>% 
   select(year,var,value,units)
 
@@ -530,7 +530,7 @@ if (!max(data_luc_diff$year) %in% year_higlight) {
 
 labels <- data_luc_diff %>% 
   filter(year>=max(data_luc_diff$year)-9) %>% 
-  filter(var %in% c("Bookkeeping average","Inventories")) %>%
+  filter(var %in% c("Bookkeeping average","Grassi NGHGI (inventories)")) %>%
   group_by(var) %>% 
   summarise(value_end=last(value),value=mean(value)) %>% 
   mutate(year=paste0(max(data_luc_diff$year)-9,"-",max(data_luc_diff$year))) %>% 
@@ -539,7 +539,7 @@ labels <- data_luc_diff %>%
 
 
 data_luc_diff$var <- as.factor(data_luc_diff$var)
-data_luc_diff$var <- fct_relevel(data_luc_diff$var,"Inventories","Bookkeeping average","BLUE","H&N","OSCAR","FAO")
+data_luc_diff$var <- fct_relevel(data_luc_diff$var,"Grassi NGHGI (inventories)","Bookkeeping average","BLUE","H&N","OSCAR","FAOSTAT")
 
 
 p1 <- data_luc_diff %>% ggplot(.,aes(x=year,y=value,colour=var)) +
@@ -567,7 +567,7 @@ p2 <- data_luc_diff %>%
   geom_segment(aes(x=3.75,xend=3.9,y=labels$value_end[1],yend=labels$value_end[1]),color="#636363",size = 0.25) +
   geom_segment(aes(x=3.75,xend=3.9,y=labels$value_end[2],yend=labels$value_end[2]),color="#636363",size = 0.25) +
   annotate("text",x=4,y=sum(labels$value_end),label=str_wrap(paste0("10 year avg. difference: ",signif(labels$difference,2), " Gt"),20),hjust=0,vjust=1,size=3.5,colour="#636363") +
-  geom_text(aes(x=1,y=value,label=var,colour=var),hjust=0,size=3.5) +
+  geom_text(aes(x=1,y=value,label=str_wrap(var,20),colour=var),hjust=0,size=3.5) +
   scale_colour_manual(values=c("#7dd396ff","#3a5e91ff","#74a6d4ff","#74a6d4ff","#74a6d4ff","#4f8455ff")) +
   scale_y_continuous(limits = layer_scales(p1)$y$range$range) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.01)),limits=c(1,6)) +
@@ -1143,9 +1143,6 @@ data_top_shares <- data_top_shares %>%
   mutate(G20=ifelse(iso=="EU27","1",G20)) %>% 
   mutate(AnnexI=ifelse(iso=="EU27","1",AnnexI))
 
-
-## Get top x countries + LDCs
-
 data_top_shares <- data_top_shares %>% 
   mutate(group=ifelse(G20=="1" & AnnexI=="1","G20 (Annex I)",NA)) %>% 
   mutate(group=ifelse(G20=="1" & is.na(AnnexI),"G20 (non-Annex I)",group)) %>% 
@@ -1408,7 +1405,7 @@ p1 <- data_top_shares %>% ggplot(.,aes(x=year,y=share,fill=group)) +
   geom_area(color='#252525',linewidth=0.25,width=1) +
   theme_wl_bar_trend() +
   scale_fill_manual(values=c(colours_top6,"Rest of world" = "#818181ff","Least Developed Countries"="#9467bdff",
-                               "United Kingdom"="#d45087ff")) +
+                             "United Kingdom"="#d45087ff")) +
   theme(axis.title = element_blank(),
         legend.position = "none") +
   labs(title=bquote(paste("Share of cumulative CO"[2]," emissions")),
@@ -1650,6 +1647,160 @@ saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-top-contribution.xlsx"),o
 
 
 ```
+
+### Per capita emissions vs change
+
+``` {r per_capita_change,fig.height=6,fig.width=9}
+
+
+## Aggregate emissions data
+
+data_percap <- data_edgar %>% 
+  filter(year>=1990) %>% 
+  group_by(iso,country,year) %>% 
+  summarise(ghg=sum(value,na.rm=T))
+
+
+## Join population, filter out NAs
+
+data_percap <- data_percap %>% 
+  left_join(.,data_wdi_pop %>% select(iso,year,population),by=join_by("iso","year")) %>% 
+  filter(!is.na(population))
+
+
+## Add Europe, calculate per capita emissions
+
+data_percap <- data_percap %>% 
+  left_join(.,cc_EU,by="iso") %>% 
+  mutate(iso=ifelse(!is.na(EU),"EU27",iso)) %>% 
+  mutate(country=ifelse(!is.na(EU),"European Union",country)) %>% 
+  group_by(iso,country,year) %>% 
+  summarise(ghg=sum(ghg),population=sum(population)) %>% 
+  mutate(ghg_pc=ghg/population)
+
+
+## Calculate the rate of change in ghg emissions the past 3 years, slice to last year
+
+data_percap <- data_percap %>% 
+  filter(year >= max(data_percap$year)-2) %>% 
+  group_by(iso) %>% 
+  mutate(change_3yr=growth_rate(year,ghg)$rate) %>% 
+  mutate(change_3yr=change_3yr*100) %>% 
+  filter(year==max(data_percap$year))
+
+
+## Join IPCC regions
+
+regions = read.xlsx("../Codebase/IPCC_ar6_wgiii_region_classification.xlsx",sheet=3)
+regions$region_ar6_6 <- gsub("Eastern Europe and West-Central Asia","E. Europe & W. Asia",regions$region_ar6_6)
+data_percap <- data_percap %>% 
+  left_join(.,regions %>% select(iso=ISO,region_ar6_6)) %>% 
+  mutate(region_ar6_6=ifelse(iso=="EU27","Developed Countries",region_ar6_6))
+
+
+## Tidy
+
+data_percap <- data_percap %>% 
+  select(iso,country,region=region_ar6_6,year,everything())
+
+
+## Prepare plot factors, colours, etc.
+
+region_list <- unique(regions$region_ar6_6)
+region_colours <- c("#d45087ff","#659cccff","#e5b82cff","#ff9055ff","#7dd396ff","#17becfff")
+p <- vector("list", length(region_list))
+country_highlight <- data_percap %>% 
+  left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>%
+              select(iso=Code) %>% 
+              add_row(iso="EU27") %>% 
+              mutate(G20="1")) %>% 
+  filter(G20==1) %>% 
+  filter(iso %in% c("CHN","USA","IND","EU27","RUS","BRA"))
+
+
+## Plot
+
+for (i in 1:length(region_list)) {
+  
+  fill_colour <- adjustcolor(region_colours[i], alpha.f = 0.6)
+  
+  p[[i]] <- ggplot(data_percap,aes(x=ghg_pc,y=change_3yr,label=country)) +
+    geom_hline(yintercept=0,colour="#636363")+
+    geom_point(data=data_percap %>% filter(region!=region_list[i]),shape=21,size=2,colour="#bdbdbd",fill="#bdbdbd") +
+    geom_point(data=data_percap %>% filter(region==region_list[i]),shape=21,size=2.75,colour="#636363",fill=region_colours[i]) +
+    geom_label_repel(
+      data = country_highlight %>% filter(region == region_list[i]),
+      aes(x = ghg_pc, y = change_3yr, label = country),
+      size = 3.5,
+      fill = "white",
+      alpha=0.8,
+      label.size=NA,
+      min.segment.length = 0,       # Always draw a segment
+      segment.color = "#636363",     # Color of the line
+      segment.size = 0.6,           # Thickness of the line
+      box.padding = 1.25,            # Extra space around the label
+      point.padding = 0.25,          # Extra space around the point
+      max.overlaps = 125,force = 6,force_pull = 1,nudge_y = 1,nudge_x=3# Allow a bit more overlaps if needed
+    ) +
+    theme_wl() +
+    xlim(0,30) +
+    ylim(-12,12) +
+    theme(legend.position="none") +
+    labs(subtitle=region_list[i],
+         x="Per capita greenhouse gas emissions (tCO2e/person)",
+         y="Change in total greenhouse gas emissions from 2021-2023 (%)")
+  
+}
+
+combined_plot <- wrap_plots(p)
+
+# Remove x-axis for plots 1, 2, and 3
+combined_plot[[1]] <- combined_plot[[1]] + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(),axis.title.y = element_text(hjust = 1.05)) +
+  labs(title="Per capita emissions vs change in total emissions")
+combined_plot[[2]] <- combined_plot[[2]] + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+combined_plot[[3]] <- combined_plot[[3]] + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+# Remove y-axis for plots 2, 3, 5, and 6
+combined_plot[[2]] <- combined_plot[[2]] + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+combined_plot[[3]] <- combined_plot[[3]] + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+combined_plot[[5]] <- combined_plot[[5]] + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+combined_plot[[6]] <- combined_plot[[6]] + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(),axis.title.x = element_blank())
+
+combined_plot[[4]] <- combined_plot[[4]] + theme(axis.title.x = element_blank(),axis.title.y = element_blank()) + labs(caption="\n⌂ Data: EDGAR v9, World Bank \n⌂ Note: GWP100 AR6; land use change (LULUCF) emissions and removals excluded; 3 countries above 30tCO2e/capita excluded\n (Qatar, Bahrain, Kuwait); top 6 emitters by total GHG emissions labelled")
+
+combined_plot
+
+
+ggsave(combined_plot,filename = "UNEP-EGR-2024-percapita-change.png",path = "results/standard/",device = "png",height = 6,width=9,dpi=300)
+ggsave(combined_plot,filename = "UNEP-EGR-2024-percapita-change.pdf",path = "results/standard/",device = cairo_pdf,height = 6,width=9)
+ggsave(combined_plot,filename = "UNEP-EGR-2024-percapita-change.svg",path = "results/standard/",device = 'svg',height = 6,width=9)
+
+
+## Save data
+
+wb <- createWorkbook()
+addWorksheet(wb,"info")
+addWorksheet(wb,"data")
+info = data.frame(a=c("Author","Contact","Data sources","See also"),
+                  b=c("William F. Lamb",
+                      "william.lamb@pik-potsdam.de",
+                      "EDGARv9 (https://edgar.jrc.ec.europa.eu/report_2024); World Bank (https://databank.worldbank.org/source/population-estimates-and-projections)",
+                      "https://lambwf.github.io/UNEP-Gap-Report-2024-Chapter-2/"))
+
+writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
+writeData(wb, sheet = "data",data_percap %>% 
+            gather(.,var,value,ghg:change_3yr) %>% 
+            left_join(.,data.frame(var=c("ghg","population","ghg_pc","change_3yr"),units=c("tCO2e (GWP100 AR6)","persons","tCO2e/capita","%")),by=join_by(var)) %>% 
+            arrange(iso,country,region,var),
+  colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-percapita-change.xlsx"),overwrite=T)
+
+
+
+
+```
+
 
 ## Country plots
 ### Trend by sector
@@ -1953,9 +2104,9 @@ plot_country_change <- function(countries,t,data_countries_change) {
           plot.title = element_text(margin=margin(t=15)),
           axis.text.y = element_blank(),
           axis.ticks.y = element_blank()) +
-          # panel.grid.major.y = element_blank(),
-          # axis.ticks.y = element_blank(),
-          # axis.line.y = element_blank()) +
+    # panel.grid.major.y = element_blank(),
+    # axis.ticks.y = element_blank(),
+    # axis.line.y = element_blank()) +
     labs(title=countries,
          subtitle=bquote(paste("Change in recent emissions (MtCO"[2], "e)")),
          caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGARv9, Grassi et al. 2024 \n⌂ Note: GWP100 AR6; net land use change (LULUCF) emissions based on inventories") +
@@ -2025,16 +2176,16 @@ countries <- c(countries$country,"European Union")
 
 
 for (i in 1:length(countries)){
-
+  
   plot <- plot_country_change(countries[i],3,data_countries_change)
-
+  
   ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-change.png"),
          path = "results/standard/countries/",device = "png",height = 4,width=8,dpi=300)
   ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-change.pdf"),
          path = "results/standard/countries/",device = cairo_pdf,height = 4,width=8)
   ggsave(plot,filename = paste0("UNEP-EGR-2024-",countries[i],"-change.svg"),
          path = "results/standard/countries/",device = 'svg',height = 4,width=8)
-
+  
 }
 
 
