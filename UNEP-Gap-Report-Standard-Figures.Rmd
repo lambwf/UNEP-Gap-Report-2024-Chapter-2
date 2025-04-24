@@ -602,6 +602,178 @@ saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-total-luc-differences.xls
 
 ```
 
+
+### Fossil vs non-fossil emissions
+
+```{r per_capita_emissions, fig.height=4, fig.width=8}
+
+## Aggregate emissions data
+
+data_fossil <- data_edgar %>% 
+  group_by(year,sector_lv1,sector_lv2,sector_lv3,gas) %>% 
+  summarise(value=sum(value,na.rm=TRUE)/1e9)
+
+
+## Classify fossil sources
+
+data_fossil <- data_fossil %>% 
+  mutate(category=ifelse(sector_lv1=="Energy","fossil",NA)) %>% 
+  mutate(category=ifelse(gas=="F-gases","non-fossil",category)) %>% 
+  mutate(category=ifelse(sector_lv3=="Cement (excl. carbonation)","non-fossil",category)) %>% 
+  mutate(category=ifelse(sector_lv3=="Chemicals" & is.na(category),"fossil",category)) %>% 
+  mutate(category=ifelse(sector_lv3=="Metals" & is.na(category),"fossil",category)) %>% 
+  mutate(category=ifelse(sector_lv3=="Other (Industrial processes)" & is.na(category),"fossil",category)) %>% 
+  mutate(category=ifelse(sector_lv3=="Other (Indirect N2O and fossil fuel fires)","fossil",category)) %>% 
+  mutate(category=ifelse(is.na(category),"non-fossil",category))
+
+
+## Aggregate land use change data
+
+data_total_luc <- data_gcb_luc %>% 
+  filter(country=="Global") %>% 
+  mutate(value=value/1e9)
+
+# Add the GCB projection for 2023 (https://essd.copernicus.org/articles/15/5301/2023/) and join
+
+data_total_luc <- data_total_luc %>% 
+  add_row(year=2023,value=1.1*(44/12)) %>% 
+  select(-iso,-country) %>% 
+  mutate(category="non-fossil") %>% 
+  mutate(sector_lv1="Land use change (LULUCF)") %>% 
+  mutate(sector_lv2="Land use change (LULUCF)") %>% 
+  mutate(sector_lv3="Land use change (LULUCF)")
+
+
+## Join land use change data, summarise categories
+
+data_fossil <- data_fossil %>% 
+  bind_rows(.,data_total_luc) %>% 
+  filter(year>=1990) %>% 
+  filter(year<=2023) %>% 
+  mutate(category=ifelse(category=="fossil","Fossil fuel emissions",
+                         "Non-fossil emissions")) %>% 
+  group_by(category,year) %>% 
+  summarise(value=sum(value,na.rm=TRUE))
+
+
+## Calculate the rate of change in the past year
+
+data_fossil_change <- data_fossil %>% 
+  rbind(.,data_fossil %>% 
+          group_by(year) %>% 
+          summarise(value=sum(value)) %>% 
+          mutate(category="Total"))
+
+
+# Arrange new levels
+
+data_fossil_change <- data_fossil_change %>% 
+  mutate(category = as.factor(category)) %>% 
+  mutate(category = fct_relevel(category,"Total","Fossil fuel emissions","Non-fossil emissions"))
+
+
+# Calculate growth rates
+
+data_fossil_change <- data_fossil_change %>% 
+  filter(year >= max(data_fossil$year)-1) %>% 
+  group_by(category) %>% 
+  mutate(change=growth_rate(year,value)$rate) %>% 
+  mutate(change=change*100) %>% 
+  mutate(change=signif(change,2)) %>% 
+  mutate(change=ifelse(change>0,paste0("+",change,"%"),paste0("-",abs(change),"%"))) %>% 
+  filter(year==max(data_fossil$year)) %>%
+  ungroup()
+
+
+## Calculate the position of each label
+
+data_fossil_change <- data_fossil_change %>% 
+  left_join(.,data_fossil_change %>% 
+              filter(category!="Total") %>% 
+              arrange(desc(category)) %>% 
+              mutate(label_position=value) %>%
+              mutate(label_position=cumsum(label_position)) %>% 
+              mutate(label_position=label_position-(value/2)) %>% 
+              select(category,label_position)) %>% 
+  mutate(label_position=ifelse(category=="Total",value,label_position))
+
+data_fossil_change <- data_fossil_change %>% 
+  mutate(value=round(value,1)) %>% 
+  mutate(label=paste0(category,": ",value," ",change,""))
+
+
+
+
+p1 <- data_fossil %>% ggplot(.,aes(x=year,y=value,fill=category)) +
+  geom_col(color="#252525",linewidth=0.25, width=1) +
+  theme_wl_bar_trend() +
+  scale_fill_manual(values=c("Fossil fuel emissions"="#659cccff",
+                             "Non-fossil emissions"="#ff9055ff")) +
+  scale_y_continuous(breaks=c(0,20,40,60),limits=c(0,70)) +
+  scale_x_continuous(breaks=c(1990,2000,2010,2020,max(data_fossil$year)),
+                     expand = expansion(mult = c(0.05, 0.01))) +
+  theme(axis.title = element_blank(),
+        legend.position = "none") +
+  labs(title="Total net greenhouse gas emissions by source",
+       subtitle=bquote(paste("GtCO"[2], "e/year")),
+       caption="⌂ UNEP Emissions Gap Report 2024    ⌂ Data: EDGAR v9, GCB 2023    ⌂ Note: GWP100 AR6 \n⌂ Fossil fuel emissions are from the production, combustion and use of coal, oil and gas \n⌂ Non-fossil emissions are from land use change (bookkeeping conventions), agriculture, f-gases and some industrial processes")
+
+
+p2 <- data_fossil_change %>% 
+  ggplot(.,aes(x=1,y=label_position,label=str_wrap(label,22),color=category)) +
+  geom_text_repel(
+    hjust=0,
+    direction = "y",
+    point.size = NA,
+    size=3.5,
+    show.legend = FALSE,
+    min.segment.length = Inf,
+    box.padding = 0.2,
+    force = 0.1) +
+  annotation_custom(grob = textGrob("Emissions in 2023,\n1 year change:",
+                                    x = unit(0.03, "npc"), y = unit(0.88, "npc"),hjust = 0, vjust = 0,
+                                    gp = gpar(col = "#636363", fontsize = 10, lineheight=0.9)),
+                    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
+  scale_colour_manual(values=c("Fossil fuel emissions"="#659cccff",
+                             "Non-fossil emissions"="#ff9055ff")) +
+  scale_y_continuous(limits = c(0,70)) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
+  theme_wl_empty()
+
+plot <- p1 + p2 + plot_layout(widths=c(5,1.55))
+plot
+
+
+ggsave(plot,filename = "UNEP-EGR-2024-total-fossil.png",path = "results/standard/",device = "png",height = 4,width=8,dpi=300)
+ggsave(plot,filename = "UNEP-EGR-2024-total-fossil.pdf",path = "results/standard/",device = cairo_pdf,height = 4,width=8)
+ggsave(plot,filename = "UNEP-EGR-2024-total-fossil.svg",path = "results/standard/",device = 'svg',height = 4,width=8)
+
+
+## Save data
+
+wb <- createWorkbook()
+addWorksheet(wb,"info")
+addWorksheet(wb,"data")
+info = data.frame(a=c("Author","Contact","Data sources","See also"),
+                  b=c("William F. Lamb",
+                      "william.lamb@pik-potsdam.de",
+                      "EDGARv9 (https://edgar.jrc.ec.europa.eu/report_2024); GCB 2023 (https://globalcarbonbudget.org/carbonbudget2023/)",
+                      "https://lambwf.github.io/UNEP-Gap-Report-2024-Chapter-2/"))
+
+writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
+writeData(wb, sheet = "data",data_fossil %>% mutate(units="GtCO2e/year (GWP100 AR6)"),colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-total-fossil.xlsx"),overwrite=T)
+
+
+```
+
+
+
+
+
+
+
 ## Top 6 emitters
 ### Per capita emissions
 

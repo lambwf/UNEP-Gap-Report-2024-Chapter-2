@@ -186,6 +186,7 @@ filenames <- c(
   "results/standard/UNEP-EGR-2024-total-gas-trend.svg",
   "results/standard/UNEP-EGR-2024-total-uncertainties.svg",
   "results/standard/UNEP-EGR-2024-total-sector-trend.svg",
+  "results/standard/UNEP-EGR-2024-total-fossil.svg",
   "results/standard/UNEP-EGR-2024-total-luc-differences.svg",
   "results/standard/UNEP-EGR-2024-top-contribution.svg",
   "results/standard/UNEP-EGR-2024-top-shares.svg",
