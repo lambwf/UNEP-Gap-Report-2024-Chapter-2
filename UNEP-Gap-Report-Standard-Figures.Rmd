@@ -1973,6 +1973,314 @@ saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-percapita-change.xlsx"),o
 
 ```
 
+### Trend with/without LULUCF
+
+``` {r trend_with_without_LULUCF,fig.height=5,fig.width=9}
+
+
+## Aggregate emissions data
+
+data_trend_luc <- data_edgar %>% 
+  filter(year>=1990) %>%  
+  group_by(iso,country,year) %>% 
+  summarise(ghg=sum(value,na.rm=T)/1e6)
+
+
+## Add Europe
+
+data_trend_luc <- data_trend_luc %>% 
+  rbind(.,data_trend_luc %>% 
+          left_join(.,cc_EU,by="iso") %>% 
+          filter(!is.na(EU)) %>% 
+          group_by(year) %>% 
+          summarise(iso="EU27",country="European Union",ghg=sum(ghg,na.rm=T)))
+
+
+## Add LULUCF data
+
+data_luc <- read.xlsx("sources/not public/LULUCF NGHGI data for UNEP 2024.xlsx",startRow = 3)
+data_luc <- data_luc %>% 
+  filter(LAND.CATEGORY=="LULUCF net") %>% 
+  gather(year,luc,`2000`:`2023`) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  select(iso=country.code,year,luc) %>% 
+  ungroup()
+
+# slot in tidy ghg inventory data
+load("../Tidy-GHG-Inventories/data/data_crts_v1.2.RData")
+data_crts <- data_crts %>% 
+  filter(sector_lv1=="Land use, land-use change and forestry") %>% 
+  group_by(iso,year) %>% 
+  summarise(value=sum(value,na.rm=T)/1e6) %>% 
+  group_by(iso) %>% 
+   mutate(n=n()) %>% 
+   filter(n>=33) %>% 
+   select(-n) %>% 
+  ungroup()
+
+data_crts <- data_crts %>% 
+  spread(.,year,value) %>% 
+  gather(.,year,value,-iso) %>% 
+  arrange(iso,year) %>% 
+  group_by(iso) %>% 
+  fill(value, .direction = "down") %>% 
+  ungroup() %>% 
+  mutate(year=as.numeric(year))
+  
+data_luc <- left_join(data_luc,data_crts)
+data_luc <- data_luc %>% 
+  mutate(luc=ifelse(is.na(value),luc,value))
+  
+
+data_trend_luc <- left_join(data_trend_luc,data_luc,by=join_by(iso,year))
+data_trend_luc <- data_trend_luc %>% 
+  mutate(ghg_tot = ghg+luc) %>% 
+  filter(!is.na(ghg_tot))
+  
+
+## Adjust data for regression: all values must be non-zero, so if any in a series are negative, we sum the series by the lowest luc number
+
+data_trend_luc <- data_trend_luc %>%
+  group_by(iso) %>%
+  mutate(has_negative_ghg_tot = any(ghg_tot < 0, na.rm = TRUE),
+         max_luc = min(luc, na.rm = TRUE),
+         ghg_tot_adjusted = ifelse(has_negative_ghg_tot, ghg_tot - max_luc, ghg_tot)) %>%
+  ungroup()
+
+
+## Calculate the rate of change in ghg emissions the past x (10?) years, slice to last year
+
+data_trend_luc <- data_trend_luc %>% 
+  filter(year >= max(data_trend_luc$year)-5) %>% 
+  group_by(iso) %>% 
+  mutate(change_ghg_tot=growth_rate(year,ghg_tot_adjusted)$rate) %>% 
+  mutate(change_ghg_tot=change_ghg_tot*100) %>% 
+  mutate(change_ghg=growth_rate(year,ghg)$rate) %>% 
+  mutate(change_ghg=change_ghg*100)
+
+
+## Filter to countries that only have some change in the luc data
+
+data_trend_luc <- data_trend_luc %>% 
+  group_by(iso) %>% 
+  mutate(include=ifelse(first(luc)==last(luc),0,1)) %>% 
+  filter(include==1)
+
+
+## Join IPCC regions
+
+regions = read.xlsx("../Codebase/IPCC_ar6_wgiii_region_classification.xlsx",sheet=3)
+regions$region_ar6_6 <- gsub("Eastern Europe and West-Central Asia","E. Europe & W. Asia",regions$region_ar6_6)
+data_trend_luc <- data_trend_luc %>% 
+  left_join(.,regions %>% select(iso=ISO,region_ar6_6)) %>% 
+  mutate(region_ar6_6=ifelse(iso=="EU27","Developed Countries",region_ar6_6))
+
+
+## Tidy
+
+data_trend_luc <- data_trend_luc %>% 
+  select(iso,country,region=region_ar6_6,year,ghg,luc,ghg_tot,change_ghg,change_ghg_tot) %>% 
+  arrange(iso,year)
+
+
+## Prepare plot factors, colours, etc.
+
+region_list <- unique(regions$region_ar6_6)
+region_colours <- c("#d45087ff","#659cccff","#e5b82cff","#ff9055ff","#7dd396ff","#17becfff")
+p <- vector("list", length(region_list))
+country_highlight <- data_trend_luc %>% 
+  left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>%
+              select(iso=Code) %>% 
+              add_row(iso="EU27") %>% 
+              mutate(G20="1")) %>% 
+  filter(G20==1) %>% 
+  filter(iso %in% c("DEU")) %>% 
+  filter(year==max(data_trend_luc$year))
+
+country_highlight <- data_trend_luc %>% 
+  mutate(difference=change_ghg-change_ghg_tot) %>% 
+  filter(abs(difference)>2) %>% 
+  filter(year==max(data_trend_luc$year))
+
+
+## Plot
+
+plot <- data_trend_luc %>% 
+  filter(year==max(data_trend_luc$year)) %>%
+  ggplot(.,aes(x=change_ghg_tot,y=change_ghg,label=country,fill=region)) +
+    geom_hline(yintercept=0,colour="#636363")+
+    geom_vline(xintercept=0,colour="#636363")+
+    geom_abline(data = data.frame(change_ghg_tot=c(-10,10),change_ghg=c(-10,10)),colour="#636363") +
+    geom_point(shape=21,size=2.75,colour="#636363") +
+    
+  annotate("text", x = 0.25, y = 9.5, label = "Slower growth",hjust=0,size=3.5) +
+  annotate("text", x = 9.75, y = 0.75, label = "Faster growth",hjust=1,size=3.5) +
+  annotate("text", x = -0.25, y = -9.25, label = "Slower reductions",hjust=1,size=3.5) +
+  annotate("text", x = -9.75, y = -0.5, label = "Faster reductions",hjust=0,size=3.5) +
+  
+  # geom_label_repel(
+  #   data = country_highlight,
+  #   aes(x = change_ghg_tot, y = change_ghg, label = country),
+  #   size = 3.5,
+  #   fill = "white",
+  #   alpha=0.8,
+  #   label.size=NA,
+  #   min.segment.length = 0,       # Always draw a segment
+  #   segment.color = "#636363",     # Color of the line
+  #   segment.size = 0.6,           # Thickness of the line
+  #   box.padding = 1.25,            # Extra space around the label
+  #   point.padding = 0.25,          # Extra space around the point
+  #   max.overlaps = 125,force = 6,force_pull = 1# Allow a bit more overlaps if needed
+  # ) +
+
+  scale_fill_manual(values=region_colours) +
+    theme_wl() +
+    xlim(-10,10) +
+    ylim(-10,10) +
+  theme(legend.title=element_blank()) + 
+    labs(x="Change in GHG emissions including LULUCF (%/yr, 5 yrs)",
+         y="Change in GHG emissions excluding LULUCF (%/yr, 5 yrs)",
+         title = "The influence of including the LULUCF sector on recent\nnational greenhouse gas emissions trends",
+         caption="\n⌂ Data: EDGAR v9, UNFCCC, Tidy GHG Inventories  ⌂ Note: GWP100 AR6")
+
+plot
+ 
+
+
+ggsave(plot,filename = "UNEP-EGR-2024-trend-with-lulucf.png",path = "results/standard/",device = "png",height = 5,width=9,dpi=300)
+ggsave(plot,filename = "UNEP-EGR-2024-trend-with-lulucf.pdf",path = "results/standard/",device = cairo_pdf,height = 5,width=9)
+ggsave(plot,filename = "UNEP-EGR-2024-trend-with-lulucf.svg",path = "results/standard/",device = 'svg',height = 5,width=9)
+
+
+## Save data
+
+wb <- createWorkbook()
+addWorksheet(wb,"info")
+addWorksheet(wb,"data")
+info = data.frame(a=c("Author","Contact","Data sources","See also"),
+                  b=c("William F. Lamb",
+                      "william.lamb@pik-potsdam.de",
+                      "EDGARv9 (https://edgar.jrc.ec.europa.eu/report_2024); Tidy GHG Inventories (https://lambwf.github.io/Tidy-GHG-Inventories/)",
+                      "https://lambwf.github.io/UNEP-Gap-Report-2024-Chapter-2/"))
+
+writeData(wb, sheet = "info",info,colNames = F, rowNames = F)
+writeData(wb, sheet = "data",data_trend_luc,
+  colNames = T, rowNames = F)
+
+saveWorkbook(wb,paste0("results/standard/UNEP-EGR-2024-trend-with-lulucf.xlsx"),overwrite=T)
+
+
+
+
+ 
+```
+
+### LULUCF totals and trends
+
+``` {r trend_with_without_LULUCF,fig.height=5,fig.width=9}
+
+
+## Aggregate emissions data
+
+data_top6_luc <- data_edgar %>% 
+  filter(year>=1990) %>%  
+  group_by(iso,country,year) %>% 
+  summarise(ghg=sum(value,na.rm=T)/1e6)
+
+
+## Add LULUCF data
+
+data_luc <- read.xlsx("sources/not public/LULUCF NGHGI data for UNEP 2024.xlsx",startRow = 3)
+data_luc <- data_luc %>% 
+  filter(LAND.CATEGORY=="LULUCF net") %>% 
+  gather(year,luc,`2000`:`2023`) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  select(iso=country.code,year,luc) %>% 
+  ungroup()
+
+# slot in tidy ghg inventory data
+load("../Tidy-GHG-Inventories/data/data_crts_v1.2.RData")
+data_crts <- data_crts %>% 
+  filter(sector_lv1=="Land use, land-use change and forestry") %>% 
+  group_by(iso,year) %>% 
+  summarise(value=sum(value,na.rm=T)/1e6) %>% 
+  group_by(iso) %>% 
+   mutate(n=n()) %>% 
+   filter(n>=33) %>% 
+   select(-n) %>% 
+  ungroup()
+
+data_crts <- data_crts %>% 
+  spread(.,year,value) %>% 
+  gather(.,year,value,-iso) %>% 
+  arrange(iso,year) %>% 
+  group_by(iso) %>% 
+  fill(value, .direction = "down") %>% 
+  ungroup() %>% 
+  mutate(year=as.numeric(year))
+  
+data_luc <- left_join(data_luc,data_crts)
+data_luc <- data_luc %>% 
+  mutate(luc=ifelse(is.na(value),luc,value))
+  
+
+data_top6_luc <- left_join(data_top6_luc,data_luc,by=join_by(iso,year))
+data_top6_luc <- data_top6_luc %>% 
+  mutate(ghg_tot = ghg+luc) %>% 
+  filter(!is.na(ghg_tot))
+
+
+## Add Europe
+
+data_top6_luc <- data_top6_luc %>% 
+  rbind(.,data_top6_luc %>% 
+          left_join(.,cc_EU,by="iso") %>% 
+          filter(!is.na(EU)) %>% 
+          group_by(year) %>% 
+          summarise(iso="EU27",country="European Union",ghg=sum(ghg,na.rm=T)))
+
+
+
+  
+
+## Create sequence in 5 year intervals for plotting dots
+
+year_higlight <- seq(1990, max(data_top6_luc$year), by = 5)
+
+if (!max(data_top6_luc$year) %in% year_higlight) {
+  year_higlight <- c(year_higlight, max(data_top6_luc$year))
+}
+
+
+
+
+
+
+data_top6_luc %>% 
+  filter(country %in% high_emitters) %>% 
+  ggplot(.,aes(x=year,y=luc,colour=country)) +
+  geom_hline(yintercept=0)+
+  geom_path(size=1,fill="none") +
+
+  geom_point(data=data_top6_luc %>%
+               filter(country %in% high_emitters) %>%
+               filter(year %in% year_higlight),
+             shape=21,fill="white") +
+  scale_x_continuous(breaks = c(1990,2000,2010,2023)) +
+  theme_wl() +
+  scale_colour_manual(values=colours_top6)# +
+  # theme(legend.position="none",
+  #       axis.title = element_blank(),
+  #       panel.grid.major.x = element_blank())
+
+
+
+```
+
+
+
+
+
 
 ## Country plots
 ### Trend by sector
