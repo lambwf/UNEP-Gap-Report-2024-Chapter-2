@@ -193,7 +193,8 @@ filenames <- c(
   "results/standard/UNEP-EGR-2024-G20-shares.svg",
   "results/standard/UNEP-EGR-2024-top-trend-exLUC.svg",
   "results/standard/UNEP-EGR-2024-top-percapita-exLUC.svg",
-  "results/standard/UNEP-EGR-2024-percapita-change.svg")
+  "results/standard/UNEP-EGR-2024-percapita-change.svg",
+  "results/standard/UNEP-EGR-2024-trend-with-lulucf.svg")
 
 
 for (file in filenames) {
@@ -208,8 +209,15 @@ for (file in filenames) {
 
   link_svg <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/", plot, ".svg'>svg</a>")
   
+  svg_content <- readLines(file, warn = FALSE)
+  svg_content <- paste(svg_content, collapse = "\n")
+
   cat("<div class='figure-container'>")
-  cat(paste0("<img src='", file, "' alt='", plot, "' />"))
+  #cat("<![CDATA[")
+  cat(svg_content)
+  
+  #cat("<div class='figure-container'>")
+  #cat(paste0("<img src='", file, "' alt='", plot, "' />"))
   cat(paste0("<div class='figure-text'>", link_data, " | ", link_png, " | ", link_pdf, " | ", link_svg, "</div>"))
   cat("</div>")
 
@@ -248,8 +256,17 @@ for (file in filenames) {
 
   link_svg <- paste0("<a target='_blank' href='https://github.com/lambwf/UNEP-Gap-Report-2024-Chapter-2/raw/main/results/standard/countries/", plot, ".svg'>svg</a>")
   
+  
+  svg_content <- readLines(file, warn = FALSE)
+  svg_content <- paste(svg_content, collapse = "\n")
+
   cat("<div class='figure-container'>")
-  cat(paste0("<img src='", file, "' alt='", plot, "' />"))
+  #cat("<![CDATA[")
+  cat(svg_content)
+   
+   
+  # cat("<div class='figure-container'>")
+  # cat(paste0("<img src='", file, "' alt='", plot, "' />"))
   cat(paste0("<div class='figure-text'>", link_data, " | ", link_png, " | ", link_pdf, " | ", link_svg, "</div>"))
   cat("</div>")
 
