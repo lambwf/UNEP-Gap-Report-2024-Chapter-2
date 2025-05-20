@@ -1879,7 +1879,7 @@ data_percap <- data_percap %>%
 ## Prepare plot factors, colours, etc.
 
 region_list <- unique(regions$region_ar6_6)
-region_colours <- c("#d45087ff","#659cccff","#e5b82cff","#ff9055ff","#7dd396ff","#17becfff")
+region_colours <- c("Africa"="#d45087ff","Developed Countries"="#659cccff","Asia and developing Pacific"="#e5b82cff","E. Europe & W. Asia"="#ff9055ff","Latin America and Caribbean"="#7dd396ff","Middle East"="#17becfff")
 p <- vector("list", length(region_list))
 country_highlight <- data_percap %>% 
   left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>%
@@ -2086,7 +2086,7 @@ data_trend_luc <- data_trend_luc %>%
 ## Prepare plot factors, colours, etc.
 
 region_list <- unique(regions$region_ar6_6)
-region_colours <- c("#d45087ff","#659cccff","#e5b82cff","#ff9055ff","#7dd396ff","#17becfff")
+region_colours <- c("Africa"="#d45087ff","Developed Countries"="#659cccff","Asia and developing Pacific"="#e5b82cff","E. Europe & W. Asia"="#ff9055ff","Latin America and Caribbean"="#7dd396ff","Middle East"="#17becfff")
 p <- vector("list", length(region_list))
 country_highlight <- data_trend_luc %>% 
   left_join(.,read.csv("https://raw.githubusercontent.com/openclimatedata/countrygroups/main/data/g20.csv") %>%
@@ -2141,7 +2141,7 @@ plot <- data_trend_luc %>%
     labs(x="Change in GHG emissions including LULUCF (%/yr, 5 yrs)",
          y="Change in GHG emissions excluding LULUCF (%/yr, 5 yrs)",
          title = "The influence of including the LULUCF sector on recent\nnational greenhouse gas emissions trends",
-         caption="\n⌂ Data: EDGAR v9, UNFCCC, Tidy GHG Inventories  ⌂ Note: GWP100 AR6")
+         caption="\n⌂ Data: EDGAR v9, UNFCCC, Tidy GHG Inventories  ⌂ Note: GWP100 AR6; only countries with recent LULUCF trend data shown")
 
 plot
  
